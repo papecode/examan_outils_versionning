@@ -1,0 +1,117 @@
+services:
+  db:
+    image: postgres:15
+    profiles: ["dev", "prod"]
+    env_file: .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - biblio-network
+
+  utilisateurs:
+    profiles: ["dev", "prod"]
+    build: ./services/utilisateurs
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - biblio-network
+
+  livres:
+    profiles: ["dev", "prod"]
+    build: ./services/livres
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - biblio-network
+
+  emprunts:
+    profiles: ["dev", "prod"]
+    build: ./services/emprunts
+    env_file: .env
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - LOANS_EXPORT_PATH=/data/loans.csv
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - biblio-network
+
+  reco:
+    profiles: ["dev", "prod"]
+    build: ./services/reco
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./models:/models:ro
+    environment:
+      - MODEL_PATH=/models/model.pkl
+      - BOOKS_SERVICE_URL=http://livres:8000
+    depends_on:
+      - db
+      - livres
+    networks:
+      - biblio-network
+
+  frontend:
+    profiles: ["dev"]
+    build:
+      context: ./frontend
+      target: development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_USERS_URL=http://localhost:8000
+      - VITE_API_BOOKS_URL=http://localhost:8001
+      - VITE_API_LOANS_URL=http://localhost:8003
+      - VITE_API_RECO_URL=http://localhost:8004
+    depends_on:
+      - utilisateurs
+      - livres
+      - emprunts
+      - reco
+    networks:
+      - biblio-network
+
+  frontend-prod:
+    profiles: ["prod"]
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "3000:8080"
+    depends_on:
+      - utilisateurs
+      - livres
+      - emprunts
+      - reco
+    networks:
+      - biblio-network
+
+networks:
+  biblio-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

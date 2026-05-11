@@ -1,0 +1,24 @@
+# Pipeline DVC — a completer par l'equipe ML
+stages:
+  preprocess:
+    cmd: python scripts/preprocess.py
+    deps:
+      - scripts/preprocess.py
+      - data/loans.csv
+    outs:
+      - data/loans_clean.csv
+  train:
+    cmd: python scripts/train.py
+    deps:
+      - scripts/train.py
+      - data/loans_clean.csv
+    outs:
+      - models/model.pkl
+  evaluate:
+    cmd: python scripts/evaluate.py
+    deps:
+      - scripts/evaluate.py
+      - data/loans_clean.csv
+      - models/model.pkl
+    metrics:
+      - metrics.json
