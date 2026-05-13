@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -29,23 +29,20 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
+import { formatLoanDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
+import type { Book } from "@/types/book";
 import type { Loan } from "@/types/loan";
 
-function formatDate(value?: string): string {
-  if (!value) {
-    return "-";
-  }
-  return new Date(value).toLocaleDateString("fr-FR");
-}
+type LoanFilter = "all" | "active" | "overdue";
 
-function loanStatus(loan: Loan): string {
-  if (loan.statut === "en_retard") {
-    return "En retard";
+function matchesFilter(loan: Loan, filter: LoanFilter): boolean {
+  if (filter === "all") {
+    return true;
   }
-  if (loan.statut === "retourne" || loan.date_retour) {
-    return "Retourne";
+  if (filter === "overdue") {
+    return isLoanOverdue(loan);
   }
-  return "Actif";
+  return loan.statut !== "retourne" && !loan.date_retour;
 }
 
 export function LoansPage() {
@@ -53,7 +50,8 @@ export function LoansPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [bookId, setBookId] = useState(searchParams.get("bookId") ?? "");
-  const { page, pageSize, setPage } = usePagination();
+  const [loanFilter, setLoanFilter] = useState<LoanFilter>("all");
+  const { page, pageSize, setPage } = usePagination({ resetKey: loanFilter });
 
   useEffect(() => {
     const fromQuery = searchParams.get("bookId");
@@ -72,6 +70,19 @@ export function LoansPage() {
     queryFn: () => getUserLoans(user!.id, { page, pageSize }),
     enabled: Boolean(user),
   });
+
+  const bookMap = useMemo(() => {
+    const map = new Map<number, Book>();
+    for (const book of booksQuery.data?.items ?? []) {
+      map.set(book.id, book);
+    }
+    return map;
+  }, [booksQuery.data?.items]);
+
+  const filteredLoans = useMemo(() => {
+    const loans = loansQuery.data?.items ?? [];
+    return loans.filter((loan) => matchesFilter(loan, loanFilter));
+  }, [loansQuery.data?.items, loanFilter]);
 
   const borrowMutation = useMutation({
     mutationFn: () =>
@@ -93,6 +104,7 @@ export function LoansPage() {
     onSuccess: async () => {
       toast.success("Retour enregistre.");
       await queryClient.invalidateQueries({ queryKey: ["loans", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["recommendations", user?.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -106,8 +118,11 @@ export function LoansPage() {
     borrowMutation.mutate();
   }
 
-  const loans = loansQuery.data?.items ?? [];
   const bookOptions = booksQuery.data?.items ?? [];
+
+  function getBookTitle(loan: Loan): string {
+    return bookMap.get(loan.book_id)?.titre ?? `#${loan.book_id}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -146,8 +161,18 @@ export function LoansPage() {
       </Card>
 
       <Card className="border-border/80">
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <CardTitle>Historique des emprunts</CardTitle>
+          <Select value={loanFilter} onValueChange={(value) => setLoanFilter((value ?? "all") as LoanFilter)}>
+            <SelectTrigger className="w-full md:w-56">
+              <SelectValue placeholder="Filtrer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les emprunts</SelectItem>
+              <SelectItem value="active">Emprunts actifs</SelectItem>
+              <SelectItem value="overdue">En retard</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent>
           <ListSurface
@@ -169,12 +194,12 @@ export function LoansPage() {
                 <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
               </Alert>
             ) : null}
-            {loansQuery.data && loans.length === 0 ? (
+            {loansQuery.data && filteredLoans.length === 0 ? (
               <Alert>
-                <AlertDescription>Aucun emprunt enregistre.</AlertDescription>
+                <AlertDescription>Aucun emprunt ne correspond au filtre selectionne.</AlertDescription>
               </Alert>
             ) : null}
-            {loans.length > 0 ? (
+            {filteredLoans.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -186,13 +211,15 @@ export function LoansPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loans.map((loan, index) => (
+                  {filteredLoans.map((loan, index) => (
                     <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                      <TableCell>#{loan.book_id}</TableCell>
-                      <TableCell>{formatDate(loan.date_emprunt)}</TableCell>
-                      <TableCell>{formatDate(loan.date_retour)}</TableCell>
+                      <TableCell>{getBookTitle(loan)}</TableCell>
+                      <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
+                      <TableCell>{formatLoanDate(loan.date_retour)}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{loanStatus(loan)}</Badge>
+                        <Badge variant={isLoanOverdue(loan) ? "destructive" : "secondary"}>
+                          {getLoanStatusLabel(loan)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {loan.statut !== "retourne" && !loan.date_retour ? (

@@ -8,6 +8,29 @@ export class ApiError extends Error {
   }
 }
 
+const AUTH_STORAGE_KEY = "dit-library-session";
+
+function readAuthToken(): string | null {
+  const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const session = JSON.parse(raw) as { token?: string };
+    return session.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function buildAuthHeaders(): HeadersInit {
+  const token = readAuthToken();
+  if (!token) {
+    return {};
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 export async function requestJson<T>(
   url: string,
   init?: RequestInit,
@@ -15,6 +38,7 @@ export async function requestJson<T>(
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
+      ...buildAuthHeaders(),
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },

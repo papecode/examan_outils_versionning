@@ -1,16 +1,22 @@
 import type { ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { AppShell } from "@/components/layout/AppShell";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { getDefaultDashboardPath, isProfessor, isStudent } from "@/lib/roles";
 import { AuthPage } from "@/pages/AuthPage";
 import { CatalogPage } from "@/pages/CatalogPage";
+import { ProfessorDashboardPage } from "@/pages/dashboard/ProfessorDashboardPage";
+import { StaffDashboardPage } from "@/pages/dashboard/StaffDashboardPage";
+import { StudentDashboardPage } from "@/pages/dashboard/StudentDashboardPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoansPage } from "@/pages/LoansPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { RecommendationsPage } from "@/pages/RecommendationsPage";
 import { StaffAccountsPage } from "@/pages/StaffAccountsPage";
+import { StaffLoansHistoryPage } from "@/pages/StaffLoansHistoryPage";
+import { RoleHomeRedirect } from "@/routes/RoleHomeRedirect";
 import { StaffRoute } from "@/routes/StaffRoute";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -22,6 +28,22 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     return <Navigate to={`/connexion?next=${next}`} replace />;
   }
 
+  return children;
+}
+
+function StudentOnly({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!isStudent(user)) {
+    return <Navigate to={getDefaultDashboardPath(user)} replace />;
+  }
+  return children;
+}
+
+function ProfessorOnly({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!isProfessor(user)) {
+    return <Navigate to={getDefaultDashboardPath(user)} replace />;
+  }
   return children;
 }
 
@@ -40,10 +62,35 @@ export function AppRouter() {
         path="/espace"
         element={
           <ProtectedRoute>
-            <AppShell />
+            <DashboardShell />
           </ProtectedRoute>
         }
       >
+        <Route index element={<RoleHomeRedirect />} />
+        <Route
+          path="etudiant"
+          element={
+            <StudentOnly>
+              <StudentDashboardPage />
+            </StudentOnly>
+          }
+        />
+        <Route
+          path="professeur"
+          element={
+            <ProfessorOnly>
+              <ProfessorDashboardPage />
+            </ProfessorOnly>
+          }
+        />
+        <Route
+          path="personnel"
+          element={
+            <StaffRoute>
+              <StaffDashboardPage />
+            </StaffRoute>
+          }
+        />
         <Route path="emprunts" element={<LoansPage />} />
         <Route path="recommandations" element={<RecommendationsPage />} />
         <Route path="profil" element={<ProfilePage />} />
@@ -52,6 +99,14 @@ export function AppRouter() {
           element={
             <StaffRoute>
               <StaffAccountsPage />
+            </StaffRoute>
+          }
+        />
+        <Route
+          path="personnel/historique"
+          element={
+            <StaffRoute>
+              <StaffLoansHistoryPage />
             </StaffRoute>
           }
         />

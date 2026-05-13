@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "@/api/http";
 import { getRecommendations } from "@/api/recommendations";
 import { ListSurface } from "@/components/layout/ListSurface";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -19,7 +20,11 @@ export function RecommendationsPage() {
     queryKey: ["recommendations", user?.id],
     queryFn: () => getRecommendations(user!.id),
     enabled: Boolean(user),
+    retry: false,
   });
+
+  const modelMissing =
+    recommendationsQuery.error instanceof ApiError && recommendationsQuery.error.status === 404;
 
   const paginated = useMemo(() => {
     if (!recommendationsQuery.data) {
@@ -43,16 +48,25 @@ export function RecommendationsPage() {
         </div>
       ) : null}
 
-      {recommendationsQuery.isError ? (
+      {modelMissing ? (
         <Alert variant="destructive">
-          <AlertTitle>Service indisponible</AlertTitle>
+          <AlertTitle>Modele indisponible</AlertTitle>
           <AlertDescription>
-            Les recommandations sont indisponibles ou le modele ML n&apos;est pas charge.
+            Le service de recommandation repond 404 : le modele ML n&apos;est pas charge ou pas encore entraine.
           </AlertDescription>
         </Alert>
       ) : null}
 
-      {paginated && paginated.items.length === 0 ? (
+      {recommendationsQuery.isError && !modelMissing ? (
+        <Alert variant="destructive">
+          <AlertTitle>Service indisponible</AlertTitle>
+          <AlertDescription>
+            Les recommandations sont indisponibles pour le moment.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {paginated && paginated.items.length === 0 && !recommendationsQuery.isError ? (
         <Alert>
           <AlertDescription>Aucune recommandation pour le moment.</AlertDescription>
         </Alert>

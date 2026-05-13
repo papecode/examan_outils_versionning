@@ -20,6 +20,8 @@ Source de verite du monorepo `examen_versionning`. Les URLs par defaut supposent
 
 `identifier` accepte un **email institutionnel** ou un **ID numerique**. Le mot de passe n'est jamais stocke en clair cote frontend.
 
+Les appels authentifies peuvent inclure `Authorization: Bearer <token>` lorsque la session frontend contient un JWT renvoye par `POST /auth/login`.
+
 `GET /users/check/{identifier}` n'est **pas** le mode de connexion final ; reserve a la migration backend si besoin.
 
 ## Utilisateurs
@@ -34,7 +36,7 @@ Modele `User` : `id`, `nom`, `email`, `type_utilisateur` (`Etudiant`, `Professeu
 
 ### Pagination `GET /users`
 
-Query params : `page` (defaut `1`), `pageSize` (defaut `12`).
+Query params : `page` (defaut `1`), `pageSize` (defaut `6` cote UI catalogue ; `12` acceptable sur listes admin tant que le frontend pagine en client).
 
 Reponse ideale : `{ items: User[], total, page, pageSize }`. Si le backend renvoie un tableau simple, le frontend pagine en client.
 
@@ -52,7 +54,9 @@ Modele `Book` : `id`, `titre`, `auteur`, `categorie`, `isbn?`.
 
 ### Pagination `GET /books` et `GET /search`
 
-Query params : `page`, `pageSize` (defaut `12`), `q` pour la recherche.
+Query params : `page`, `pageSize` (defaut UI `6`), `q` pour la recherche.
+
+Filtres catalogue prevus (optionnels, backend a implementer) : `categorie`, `auteur`. En attendant, le frontend filtre en client sur le jeu charge.
 
 Reponse ideale : `{ items: Book[], total, page, pageSize }`. Tableau simple accepte : pagination client cote frontend.
 
@@ -70,7 +74,7 @@ Modele `Loan` : `user_id`, `book_id`, `date_emprunt?`, `date_retour?`, `statut?`
 
 ### Pagination `GET /loans/user/{user_id}`
 
-Query params : `page`, `pageSize` (defaut `12`). Meme forme de reponse paginee que ci-dessus.
+Query params : `page`, `pageSize` (defaut UI `6`). Meme forme de reponse paginee que ci-dessus.
 
 ## Recommandation
 

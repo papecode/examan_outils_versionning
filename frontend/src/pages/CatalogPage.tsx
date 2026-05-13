@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { listBooks, searchBooks } from "@/api/books";
 import { BookAdminPanel } from "@/components/books/BookAdminPanel";
+import { CatalogFilters } from "@/components/books/CatalogFilters";
 import { ListSurface } from "@/components/layout/ListSurface";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PaginationControls } from "@/components/layout/PaginationControls";
@@ -15,7 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
 import { buildLoginUrl } from "@/lib/navigation";
+import { paginateArray } from "@/lib/pagination";
 import { isStaff } from "@/lib/roles";
+import { DEFAULT_PAGE_SIZE } from "@/types/pagination";
 import { cn } from "@/lib/utils";
 import type { Book } from "@/types/book";
 
@@ -24,36 +27,72 @@ export function CatalogPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [category, setCategory] = useState(searchParams.get("categorie") ?? "all");
+  const [author, setAuthor] = useState(searchParams.get("auteur") ?? "all");
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const initialPage = Number(searchParams.get("page") ?? "1");
   const { page, pageSize, setPage } = usePagination({
     initialPage: Number.isFinite(initialPage) ? initialPage : 1,
-    resetKey: query,
+    pageSize: DEFAULT_PAGE_SIZE,
+    resetKey: `${query}-${category}-${author}`,
   });
 
   const booksQuery = useQuery({
-    queryKey: ["books", query, page, pageSize],
+    queryKey: ["books", query],
     queryFn: () =>
       query.trim()
-        ? searchBooks(query.trim(), { page, pageSize })
-        : listBooks({ page, pageSize }),
+        ? searchBooks(query.trim(), { page: 1, pageSize: 500 })
+        : listBooks({ page: 1, pageSize: 500 }),
   });
+
+  const filteredBooks = useMemo(() => {
+    const items = booksQuery.data?.items ?? [];
+    return items.filter((book) => {
+      const categoryMatch = category === "all" || book.categorie === category;
+      const authorMatch = author === "all" || book.auteur === author;
+      return categoryMatch && authorMatch;
+    });
+  }, [booksQuery.data?.items, category, author]);
+
+  const paginated = useMemo(
+    () => paginateArray(filteredBooks, page, pageSize),
+    [filteredBooks, page, pageSize],
+  );
+
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set((booksQuery.data?.items ?? []).map((book) => book.categorie).filter(Boolean)),
+      ).sort(),
+    [booksQuery.data?.items],
+  );
+
+  const authors = useMemo(
+    () =>
+      Array.from(new Set((booksQuery.data?.items ?? []).map((book) => book.auteur).filter(Boolean))).sort(),
+    [booksQuery.data?.items],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (query.trim()) {
       params.set("q", query.trim());
     }
+    if (category !== "all") {
+      params.set("categorie", category);
+    }
+    if (author !== "all") {
+      params.set("auteur", author);
+    }
     if (page > 1) {
       params.set("page", String(page));
     }
     setSearchParams(params, { replace: true });
-  }, [query, page, setSearchParams]);
+  }, [query, category, author, page, setSearchParams]);
 
-  const books = booksQuery.data?.items ?? [];
   const selectedBook = useMemo(
-    () => books.find((book) => book.id === selectedBookId) ?? null,
-    [books, selectedBookId],
+    () => paginated.items.find((book) => book.id === selectedBookId) ?? null,
+    [paginated.items, selectedBookId],
   );
 
   function handleBorrow(book: Book) {
@@ -84,16 +123,23 @@ export function CatalogPage() {
         className="mb-6 max-w-xl"
       />
 
+      <CatalogFilters
+        categories={categories}
+        authors={authors}
+        category={category}
+        author={author}
+        onCategoryChange={setCategory}
+        onAuthorChange={setAuthor}
+      />
+
       <ListSurface
         footer={
-          booksQuery.data ? (
-            <PaginationControls
-              page={booksQuery.data.page}
-              pageSize={booksQuery.data.pageSize}
-              total={booksQuery.data.total}
-              onPageChange={setPage}
-            />
-          ) : null
+          <PaginationControls
+            page={paginated.page}
+            pageSize={paginated.pageSize}
+            total={paginated.total}
+            onPageChange={setPage}
+          />
         }
       >
         {booksQuery.isLoading ? (
@@ -111,16 +157,16 @@ export function CatalogPage() {
           </Alert>
         ) : null}
 
-        {booksQuery.data && books.length === 0 ? (
+        {!booksQuery.isLoading && paginated.items.length === 0 ? (
           <Alert>
             <AlertTitle>Aucun resultat</AlertTitle>
             <AlertDescription>Aucun livre ne correspond a votre recherche.</AlertDescription>
           </Alert>
         ) : null}
 
-        {books.length > 0 ? (
+        {paginated.items.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {books.map((book) => (
+            {paginated.items.map((book) => (
               <Card
                 key={book.id}
                 className={cn(

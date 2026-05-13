@@ -19,7 +19,7 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const next = getSafeRedirect(searchParams.get("next"));
+  const next = getSafeRedirect(searchParams.get("next"), user);
   const bookId = searchParams.get("bookId");
   const redirectTarget =
     bookId && next.startsWith("/espace/emprunts") ? `${next}?bookId=${bookId}` : next;
