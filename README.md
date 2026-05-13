@@ -1,5 +1,7 @@
 # Bibliotheque numerique DIT
 
+[![CI](https://github.com/papecode/examan_outils_versionning/actions/workflows/ci.yml/badge.svg)](https://github.com/papecode/examan_outils_versionning/actions/workflows/ci.yml)
+
 Monorepo du projet d'examen Outils de Versioning (microservices, Docker, DVC, frontend React).
 
 ## Structure
@@ -46,6 +48,28 @@ Profil production (build statique nginx) :
 ```bash
 docker compose --profile prod up --build
 ```
+
+## CI/CD (GitHub Actions)
+
+Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'execute sur les branches `front` et `main` a chaque `push` et `pull_request`.
+
+| Job | Role |
+| --- | --- |
+| `frontend` | `npm ci`, `npm run lint`, `npm run build` dans `frontend/` |
+| `backend` | `pip install` et `python -m compileall` pour chaque microservice |
+| `ml-scripts` | `python -m compileall scripts` (pipeline ML, sans `dvc repro` en CI) |
+| `docker` | `docker compose --profile prod build` apres copie de `.env.example` vers `.env` |
+| `integration` | `docker compose --profile prod up -d`, controle de `GET /health` sur les ports 8000, 8001, 8003 et 8004, puis `docker compose down -v` |
+
+Commandes locales equivalentes :
+
+```bash
+cd frontend && npm ci && npm run lint && npm run build
+python -m compileall services/utilisateurs/app services/livres/app services/emprunts/app services/reco/app scripts
+cp .env.example .env && docker compose --profile prod build
+```
+
+Suivi des executions : onglet **Actions** du depot GitHub.
 
 ## Pipeline ML (DVC)
 

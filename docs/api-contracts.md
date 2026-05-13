@@ -108,3 +108,7 @@ Le frontend mappe `detail` (string ou premier `msg` d'un tableau) vers un messag
 ## Ecarts a implementer cote backend
 
 - CORS explicite en production pour l'origine deployee du frontend.
+
+## CI/CD
+
+Le bonus pipeline est couvert par **GitHub Actions** (voir [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) et la section CI/CD du README). Jenkins n'est pas utilise.
