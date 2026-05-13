@@ -32,6 +32,7 @@ const memberItems = [
 
 const staffItems = [
   { to: "/espace/personnel/comptes", label: "Comptes", icon: Users },
+  { to: "/espace/personnel/catalogue", label: "Catalogue admin", icon: BookOpen },
   { to: "/espace/personnel/historique", label: "Historique emprunts", icon: History },
 ];
 

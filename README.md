@@ -47,6 +47,17 @@ Profil production (build statique nginx) :
 docker compose --profile prod up --build
 ```
 
+## Pipeline ML (DVC)
+
+```bash
+python -m pip install -r requirements-ml.txt
+curl http://localhost:8003/loans/export
+python -m dvc repro
+docker compose --profile dev up -d --build reco
+```
+
+Le fichier `data/loans.csv` peut provenir de l'export emprunts ou du jeu seed du depot. Les sorties `data/loans_clean.csv` et `models/model.pkl` sont gerees par DVC (`dvc.lock`). `metrics.json` resume l'evaluation locale.
+
 ## Publication Git (manuelle)
 
 ```bash

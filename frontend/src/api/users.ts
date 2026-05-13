@@ -1,6 +1,6 @@
 import { buildPaginationQuery, toPaginatedResponse } from "@/lib/pagination";
 import { apiConfig } from "@/lib/env";
-import type { User, UserInput } from "@/types/user";
+import type { User, UserInput, UserUpdate } from "@/types/user";
 import type { PaginatedResponse, PaginationParams } from "@/types/pagination";
 import { requestJson } from "./http";
 
@@ -22,4 +22,17 @@ export async function listUsers(params: PaginationParams = {}): Promise<Paginate
 
 export function getUserById(userId: number): Promise<User> {
   return requestJson<User>(`${base}/users/${userId}`);
+}
+
+export function updateUser(userId: number, payload: UserUpdate): Promise<User> {
+  return requestJson<User>(`${base}/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  await requestJson<void>(`${base}/users/${userId}`, {
+    method: "DELETE",
+  });
 }

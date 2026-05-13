@@ -5,6 +5,8 @@ import { createUser, listUsers } from "@/api/users";
 import { ListSurface } from "@/components/layout/ListSurface";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PaginationControls } from "@/components/layout/PaginationControls";
+import { StaffUserDialogs, type StaffUserDialogMode } from "@/components/users/StaffUserDialogs";
+import { StaffUsersTable } from "@/components/users/StaffUsersTable";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,30 +19,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
+import { invalidateUserQueries } from "@/lib/queryKeys";
 import type { UserRole } from "@/types/user";
 
 const assignableRoles: UserRole[] = ["Etudiant", "Professeur"];
 
 export function StaffAccountsPage() {
   const queryClient = useQueryClient();
-  const { page, pageSize, setPage } = usePagination();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { page, pageSize, setPage } = usePagination({ resetKey: searchQuery });
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("Etudiant");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [dialogUserId, setDialogUserId] = useState<number | null>(null);
+  const [dialogMode, setDialogMode] = useState<StaffUserDialogMode>(null);
+  const [createConfirmOpen, setCreateConfirmOpen] = useState(false);
 
   const usersQuery = useQuery({
-    queryKey: ["users", page, pageSize],
-    queryFn: () => listUsers({ page, pageSize }),
+    queryKey: ["users", page, pageSize, searchQuery],
+    queryFn: () =>
+      listUsers({
+        page,
+        pageSize,
+        ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
+      }),
   });
 
   const createMutation = useMutation({
@@ -55,14 +61,52 @@ export function StaffAccountsPage() {
       setNom("");
       setEmail("");
       setRole("Etudiant");
-      await queryClient.invalidateQueries({ queryKey: ["users"] });
+      setCreateConfirmOpen(false);
+      await invalidateUserQueries(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
   function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    createMutation.mutate();
+    setCreateConfirmOpen(true);
+  }
+
+  function openDialog(userId: number, mode: Exclude<StaffUserDialogMode, null>) {
+    setDialogUserId(userId);
+    setDialogMode(mode);
+  }
+
+  function closeDialog() {
+    setDialogUserId(null);
+    setDialogMode(null);
+  }
+
+  function toggleUser(userId: number, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(userId);
+      } else {
+        next.delete(userId);
+      }
+      return next;
+    });
+  }
+
+  function togglePage(checked: boolean) {
+    const users = usersQuery.data?.items ?? [];
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      for (const user of users) {
+        if (checked) {
+          next.add(user.id);
+        } else {
+          next.delete(user.id);
+        }
+      }
+      return next;
+    });
   }
 
   const users = usersQuery.data?.items ?? [];
@@ -120,60 +164,63 @@ export function StaffAccountsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Comptes enregistres</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ListSurface
-            footer={
-              usersQuery.data ? (
-                <PaginationControls
-                  page={usersQuery.data.page}
-                  pageSize={usersQuery.data.pageSize}
-                  total={usersQuery.data.total}
-                  onPageChange={setPage}
-                />
-              ) : null
-            }
-          >
-            {usersQuery.isLoading ? <Skeleton className="h-32 w-full" /> : null}
-            {usersQuery.isError ? (
-              <Alert variant="destructive">
-                <AlertTitle>Liste indisponible</AlertTitle>
-                <AlertDescription>Le service utilisateurs n&apos;est pas joignable pour le moment.</AlertDescription>
-              </Alert>
-            ) : null}
-            {usersQuery.data && users.length === 0 ? (
-              <Alert>
-                <AlertDescription>Aucun compte a afficher.</AlertDescription>
-              </Alert>
-            ) : null}
-            {users.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Profil</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell>{account.id}</TableCell>
-                      <TableCell>{account.nom}</TableCell>
-                      <TableCell>{account.email}</TableCell>
-                      <TableCell>{account.type_utilisateur}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : null}
-          </ListSurface>
-        </CardContent>
-      </Card>
+      <Input
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Rechercher par nom, email ou identifiant"
+        className="max-w-xl"
+      />
+
+      <ListSurface
+        footer={
+          usersQuery.data ? (
+            <PaginationControls
+              page={usersQuery.data.page}
+              pageSize={usersQuery.data.pageSize}
+              total={usersQuery.data.total}
+              onPageChange={setPage}
+            />
+          ) : null
+        }
+      >
+        {usersQuery.isLoading ? <Skeleton className="h-32 w-full" /> : null}
+        {usersQuery.isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Liste indisponible</AlertTitle>
+            <AlertDescription>Le service utilisateurs n&apos;est pas joignable pour le moment.</AlertDescription>
+          </Alert>
+        ) : null}
+        {usersQuery.data && users.length === 0 ? (
+          <Alert>
+            <AlertDescription>
+              {searchQuery.trim()
+                ? "Aucun compte ne correspond a votre recherche."
+                : "Aucun compte a afficher."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {users.length > 0 ? (
+          <StaffUsersTable
+            users={users}
+            selectedIds={selectedIds}
+            onToggleUser={toggleUser}
+            onTogglePage={togglePage}
+            onOpenDialog={openDialog}
+          />
+        ) : null}
+      </ListSurface>
+
+      <StaffUserDialogs userId={dialogUserId} mode={dialogMode} onClose={closeDialog} />
+
+      <ConfirmActionDialog
+        open={createConfirmOpen}
+        title="Creer ce compte ?"
+        description={`Confirmez la creation du compte ${nom.trim()} (${email.trim()}, ${role}).`}
+        confirmLabel="Creer le compte"
+        pending={createMutation.isPending}
+        onOpenChange={setCreateConfirmOpen}
+        onConfirm={() => createMutation.mutate()}
+      />
     </div>
   );
 }

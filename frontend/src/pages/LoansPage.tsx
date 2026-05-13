@@ -30,6 +30,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
 import { formatLoanDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
+import { paginateArray } from "@/lib/pagination";
+import { invalidateLoanQueries } from "@/lib/queryKeys";
 import type { Book } from "@/types/book";
 import type { Loan } from "@/types/loan";
 
@@ -66,8 +68,8 @@ export function LoansPage() {
   });
 
   const loansQuery = useQuery({
-    queryKey: ["loans", user?.id, page, pageSize],
-    queryFn: () => getUserLoans(user!.id, { page, pageSize }),
+    queryKey: ["loans", user?.id],
+    queryFn: () => getUserLoans(user!.id, { page: 1, pageSize: 200 }),
     enabled: Boolean(user),
   });
 
@@ -84,6 +86,11 @@ export function LoansPage() {
     return loans.filter((loan) => matchesFilter(loan, loanFilter));
   }, [loansQuery.data?.items, loanFilter]);
 
+  const paginatedLoans = useMemo(
+    () => paginateArray(filteredLoans, page, pageSize),
+    [filteredLoans, page, pageSize],
+  );
+
   const borrowMutation = useMutation({
     mutationFn: () =>
       createLoan({
@@ -93,8 +100,7 @@ export function LoansPage() {
     onSuccess: async () => {
       toast.success("Emprunt enregistre.");
       setBookId("");
-      await queryClient.invalidateQueries({ queryKey: ["loans", user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["recommendations", user?.id] });
+      await invalidateLoanQueries(queryClient, user?.id);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -103,8 +109,7 @@ export function LoansPage() {
     mutationFn: (bookIdToReturn: number) => returnLoan(user!.id, bookIdToReturn),
     onSuccess: async () => {
       toast.success("Retour enregistre.");
-      await queryClient.invalidateQueries({ queryKey: ["loans", user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["recommendations", user?.id] });
+      await invalidateLoanQueries(queryClient, user?.id);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -179,9 +184,9 @@ export function LoansPage() {
             footer={
               loansQuery.data ? (
                 <PaginationControls
-                  page={loansQuery.data.page}
-                  pageSize={loansQuery.data.pageSize}
-                  total={loansQuery.data.total}
+                  page={paginatedLoans.page}
+                  pageSize={paginatedLoans.pageSize}
+                  total={paginatedLoans.total}
                   onPageChange={setPage}
                 />
               ) : null
@@ -194,12 +199,12 @@ export function LoansPage() {
                 <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
               </Alert>
             ) : null}
-            {loansQuery.data && filteredLoans.length === 0 ? (
+            {loansQuery.data && paginatedLoans.items.length === 0 ? (
               <Alert>
                 <AlertDescription>Aucun emprunt ne correspond au filtre selectionne.</AlertDescription>
               </Alert>
             ) : null}
-            {filteredLoans.length > 0 ? (
+            {paginatedLoans.items.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -211,7 +216,7 @@ export function LoansPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLoans.map((loan, index) => (
+                  {paginatedLoans.items.map((loan, index) => (
                     <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
                       <TableCell>{getBookTitle(loan)}</TableCell>
                       <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>

@@ -58,6 +58,9 @@ export function buildPaginationQuery(params: PaginationParams): string {
   if (params.pageSize) {
     search.set("pageSize", String(normalizePageSize(params.pageSize)));
   }
+  if (params.q?.trim()) {
+    search.set("q", params.q.trim());
+  }
   const query = search.toString();
   return query ? `?${query}` : "";
 }

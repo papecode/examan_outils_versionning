@@ -15,6 +15,7 @@ import { LoansPage } from "@/pages/LoansPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { RecommendationsPage } from "@/pages/RecommendationsPage";
 import { StaffAccountsPage } from "@/pages/StaffAccountsPage";
+import { StaffCatalogPage } from "@/pages/StaffCatalogPage";
 import { StaffLoansHistoryPage } from "@/pages/StaffLoansHistoryPage";
 import { RoleHomeRedirect } from "@/routes/RoleHomeRedirect";
 import { StaffRoute } from "@/routes/StaffRoute";
@@ -99,6 +100,14 @@ export function AppRouter() {
           element={
             <StaffRoute>
               <StaffAccountsPage />
+            </StaffRoute>
+          }
+        />
+        <Route
+          path="personnel/catalogue"
+          element={
+            <StaffRoute>
+              <StaffCatalogPage />
             </StaffRoute>
           }
         />

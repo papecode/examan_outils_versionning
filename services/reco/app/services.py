@@ -16,7 +16,7 @@ def load_model():
     try:
         with path.open("rb") as handle:
             return pickle.load(handle)
-    except (OSError, pickle.UnpicklingError):
+    except (OSError, pickle.UnpicklingError, ModuleNotFoundError, AttributeError):
         return None
 
 
@@ -29,7 +29,7 @@ async def fetch_books_by_ids(book_ids: list[int]) -> list[BookRead]:
         items = payload.get("items", payload)
         catalog = {item["id"]: item for item in items}
         for book_id in book_ids:
-            item = catalog.get(book_id)
+            item = catalog.get(int(book_id))
             if item is not None:
                 books.append(BookRead.model_validate(item))
     return books
@@ -38,8 +38,11 @@ async def fetch_books_by_ids(book_ids: list[int]) -> list[BookRead]:
 def recommend_book_ids(model, user_id: int) -> list[int]:
     if isinstance(model, dict):
         if user_id in model:
-            return list(model[user_id])
-        return list(model.get("default", []))
+            return [int(item) for item in model[user_id]]
+        user_key = str(user_id)
+        if user_key in model:
+            return [int(item) for item in model[user_key]]
+        return [int(item) for item in model.get("default", [])]
     if hasattr(model, "predict"):
         prediction = model.predict([user_id])
         if isinstance(prediction, list):

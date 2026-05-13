@@ -8,6 +8,7 @@ export interface PaginatedResponse<T> {
 export interface PaginationParams {
   page?: number;
   pageSize?: number;
+  q?: string;
 }
 
 export const DEFAULT_PAGE_SIZE = 6;

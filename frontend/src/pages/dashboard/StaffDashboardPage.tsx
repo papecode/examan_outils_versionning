@@ -88,7 +88,7 @@ export function StaffDashboardPage() {
           <Link to="/espace/personnel/historique">
             <Button variant="outline">Historique global</Button>
           </Link>
-          <Link to="/catalogue">
+          <Link to="/espace/personnel/catalogue">
             <Button variant="outline">Catalogue admin</Button>
           </Link>
         </QuickActions>

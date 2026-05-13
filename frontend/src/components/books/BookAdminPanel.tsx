@@ -1,7 +1,19 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { EllipsisVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createBook, deleteBook, updateBook } from "@/api/books";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ConfirmActionDialog } from "@/components/ui/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +23,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { invalidateBookQueries } from "@/lib/queryKeys";
 import type { Book } from "@/types/book";
 
 const emptyForm = {
@@ -22,15 +41,41 @@ const emptyForm = {
   isbn: "",
 };
 
+export type BookAdminDialogState =
+  | { mode: "create" }
+  | { mode: "edit"; book: Book }
+  | { mode: "delete"; book: Book }
+  | null;
+
 interface BookAdminPanelProps {
-  selectedBook: Book | null;
-  onClearSelection: () => void;
+  dialog: BookAdminDialogState;
+  onDialogChange: (state: BookAdminDialogState) => void;
+  onComplete: () => void;
 }
 
-export function BookAdminPanel({ selectedBook, onClearSelection }: BookAdminPanelProps) {
+export function BookAdminPanel({ dialog, onDialogChange, onComplete }: BookAdminPanelProps) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [createConfirmOpen, setCreateConfirmOpen] = useState(false);
+
+  const editingBook = dialog?.mode === "edit" ? dialog.book : null;
+  const deletingBook = dialog?.mode === "delete" ? dialog.book : null;
+  const formOpen = dialog?.mode === "create" || dialog?.mode === "edit";
+
+  useEffect(() => {
+    if (dialog?.mode === "edit") {
+      setForm({
+        titre: dialog.book.titre,
+        auteur: dialog.book.auteur,
+        categorie: dialog.book.categorie,
+        isbn: dialog.book.isbn ?? "",
+      });
+      return;
+    }
+    if (dialog?.mode === "create") {
+      setForm(emptyForm);
+    }
+  }, [dialog]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -41,17 +86,18 @@ export function BookAdminPanel({ selectedBook, onClearSelection }: BookAdminPane
         ...(form.isbn.trim() ? { isbn: form.isbn.trim() } : {}),
       };
 
-      if (selectedBook) {
-        return updateBook(selectedBook.id, payload);
+      if (editingBook) {
+        return updateBook(editingBook.id, payload);
       }
       return createBook(payload);
     },
     onSuccess: async () => {
-      toast.success(selectedBook ? "Livre mis a jour." : "Livre ajoute au catalogue.");
+      toast.success(editingBook ? "Livre mis a jour." : "Livre ajoute au catalogue.");
       setForm(emptyForm);
-      setOpen(false);
-      onClearSelection();
-      await queryClient.invalidateQueries({ queryKey: ["books"] });
+      setCreateConfirmOpen(false);
+      onDialogChange(null);
+      onComplete();
+      await invalidateBookQueries(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -60,59 +106,31 @@ export function BookAdminPanel({ selectedBook, onClearSelection }: BookAdminPane
     mutationFn: (bookId: number) => deleteBook(bookId),
     onSuccess: async () => {
       toast.success("Livre supprime.");
-      onClearSelection();
-      await queryClient.invalidateQueries({ queryKey: ["books"] });
+      onDialogChange(null);
+      onComplete();
+      await invalidateBookQueries(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  function openCreateDialog() {
-    onClearSelection();
-    setForm(emptyForm);
-    setOpen(true);
-  }
-
-  function openEditDialog(book: Book) {
-    setForm({
-      titre: book.titre,
-      auteur: book.auteur,
-      categorie: book.categorie,
-      isbn: book.isbn ?? "",
-    });
-    setOpen(true);
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    saveMutation.mutate();
+    if (editingBook) {
+      saveMutation.mutate();
+      return;
+    }
+    setCreateConfirmOpen(true);
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button onClick={openCreateDialog}>Ajouter un livre</Button>
-      {selectedBook ? (
-        <>
-          <Button variant="outline" onClick={() => openEditDialog(selectedBook)}>
-            Modifier la selection
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              if (window.confirm("Supprimer ce livre ?")) {
-                deleteMutation.mutate(selectedBook.id);
-              }
-            }}
-          >
-            Supprimer la selection
-          </Button>
-        </>
-      ) : null}
+    <>
+      <Button onClick={() => onDialogChange({ mode: "create" })}>Ajouter un livre</Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={formOpen} onOpenChange={(open) => !open && onDialogChange(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{selectedBook ? "Modifier un livre" : "Ajouter un livre"}</DialogTitle>
-            <DialogDescription>Reservé au personnel de la bibliotheque.</DialogDescription>
+            <DialogTitle>{editingBook ? "Modifier un livre" : "Ajouter un livre"}</DialogTitle>
+            <DialogDescription>Reserve au personnel de la bibliotheque.</DialogDescription>
           </DialogHeader>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div className="flex flex-col gap-2">
@@ -150,6 +168,9 @@ export function BookAdminPanel({ selectedBook, onClearSelection }: BookAdminPane
               />
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onDialogChange(null)}>
+                Annuler
+              </Button>
               <Button type="submit" disabled={saveMutation.isPending}>
                 Enregistrer
               </Button>
@@ -157,6 +178,82 @@ export function BookAdminPanel({ selectedBook, onClearSelection }: BookAdminPane
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+
+      <AlertDialog open={Boolean(deletingBook)} onOpenChange={(open) => !open && onDialogChange(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce livre ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingBook
+                ? `Le livre « ${deletingBook.titre} » sera retire du catalogue.`
+                : "Cette action est definitive."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deletingBook && deleteMutation.mutate(deletingBook.id)}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ConfirmActionDialog
+        open={createConfirmOpen}
+        title="Ajouter ce livre ?"
+        description={`Confirmez l'ajout de « ${form.titre.trim()} » par ${form.auteur.trim()}.`}
+        confirmLabel="Ajouter"
+        pending={saveMutation.isPending}
+        onOpenChange={setCreateConfirmOpen}
+        onConfirm={() => saveMutation.mutate()}
+      />
+    </>
+  );
+}
+
+export function BookCardAdminMenu({
+  book,
+  onEdit,
+  onDelete,
+}: {
+  book: Book;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`Actions admin pour ${book.titre}`}
+        className="flex items-center justify-center rounded-full p-2 hover:bg-muted"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <EllipsisVertical className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Pencil />
+          Modifier
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 />
+          Supprimer
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

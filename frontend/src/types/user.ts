@@ -14,6 +14,13 @@ export interface UserInput {
   password?: string;
 }
 
+export interface UserUpdate {
+  nom?: string;
+  type_utilisateur?: UserRole;
+  email?: string;
+  password?: string;
+}
+
 export interface AuthSession {
   user: User;
   token?: string;

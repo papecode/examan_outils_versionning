@@ -31,12 +31,14 @@ Les appels authentifies peuvent inclure `Authorization: Bearer <token>` lorsque 
 | `POST` | `/users` | Creation de compte **Personnel uniquement** (espace admin) |
 | `GET` | `/users` | Administration / listing comptes |
 | `GET` | `/users/{user_id}` | Page profil |
+| `PATCH` | `/users/{user_id}` | Modification **Personnel uniquement** (`nom`, `email`, `type_utilisateur`, `password` optionnel) |
+| `DELETE` | `/users/{user_id}` | Suppression **Personnel uniquement** ; `403` auto-suppression ou compte Personnel ; `409` si emprunts lies |
 
 Modele `User` : `id`, `nom`, `email`, `type_utilisateur` (`Etudiant`, `Professeur`, `Personnel`).
 
 ### Pagination `GET /users`
 
-Query params : `page` (defaut `1`), `pageSize` (defaut `6` cote UI catalogue ; `12` acceptable sur listes admin tant que le frontend pagine en client).
+Query params : `page` (defaut `1`), `pageSize` (defaut `6` cote UI catalogue ; `12` acceptable sur listes admin tant que le frontend pagine en client), `q` optionnel (filtre `nom`, `email` ou `id` numerique).
 
 Reponse ideale : `{ items: User[], total, page, pageSize }`. Si le backend renvoie un tableau simple, le frontend pagine en client.
 
@@ -83,7 +85,11 @@ Query params : `page`, `pageSize` (defaut UI `6`). Meme forme de reponse paginee
 | `GET` | `/recommendations/{user_id}` | Page recommandations |
 | `POST` | `/train` | Re-entrainement (admin / ML) |
 
-Reponse : liste de `Book`. Erreur `404` si le modele n'est pas disponible.
+Reponse : liste de `Book`. Erreur `404` si le fichier `MODEL_PATH` est absent ou illisible.
+
+Le modele serialise est un dictionnaire `user_id -> list[book_id]` (cle `default` pour les utilisateurs inconnus), produit par `dvc repro` (`scripts/train.py`).
+
+`POST /train` renvoie `503` : l'entrainement se fait via le pipeline DVC sur l'hote, pas via l'API.
 
 ## Erreurs HTTP communes
 
@@ -92,6 +98,7 @@ Reponse : liste de `Book`. Erreur `404` si le modele n'est pas disponible.
 | `400` | Corps invalide |
 | `401` | Authentification requise ou identifiants invalides |
 | `403` | Action reservee (ex. creation de compte hors Personnel) |
+| `409` | Conflit metier (ex. suppression compte avec emprunts) |
 | `404` | Ressource introuvable |
 | `422` | Validation FastAPI (`detail` string ou tableau) |
 | `503` | Service indisponible |
@@ -100,5 +107,4 @@ Le frontend mappe `detail` (string ou premier `msg` d'un tableau) vers un messag
 
 ## Ecarts a implementer cote backend
 
-- Pipeline DVC / entrainement reel du modele (`POST /train` renvoie 503 tant que le pipeline ML n'est pas branche).
 - CORS explicite en production pour l'origine deployee du frontend.

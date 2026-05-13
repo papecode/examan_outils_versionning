@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { listBooks, searchBooks } from "@/api/books";
-import { BookAdminPanel } from "@/components/books/BookAdminPanel";
+import { BookAdminPanel, BookCardAdminMenu, type BookAdminDialogState } from "@/components/books/BookAdminPanel";
 import { CatalogFilters } from "@/components/books/CatalogFilters";
 import { ListSurface } from "@/components/layout/ListSurface";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -17,12 +17,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
 import { buildLoginUrl } from "@/lib/navigation";
 import { paginateArray } from "@/lib/pagination";
-import { isStaff } from "@/lib/roles";
 import { DEFAULT_PAGE_SIZE } from "@/types/pagination";
 import { cn } from "@/lib/utils";
 import type { Book } from "@/types/book";
 
-export function CatalogPage() {
+interface CatalogPageProps {
+  variant?: "public" | "staff-admin";
+}
+
+export function CatalogPage({ variant = "public" }: CatalogPageProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +33,7 @@ export function CatalogPage() {
   const [category, setCategory] = useState(searchParams.get("categorie") ?? "all");
   const [author, setAuthor] = useState(searchParams.get("auteur") ?? "all");
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
+  const [bookDialog, setBookDialog] = useState<BookAdminDialogState>(null);
   const initialPage = Number(searchParams.get("page") ?? "1");
   const { page, pageSize, setPage } = usePagination({
     initialPage: Number.isFinite(initialPage) ? initialPage : 1,
@@ -90,10 +94,10 @@ export function CatalogPage() {
     setSearchParams(params, { replace: true });
   }, [query, category, author, page, setSearchParams]);
 
-  const selectedBook = useMemo(
-    () => paginated.items.find((book) => book.id === selectedBookId) ?? null,
-    [paginated.items, selectedBookId],
-  );
+
+  function clearBookSelection() {
+    setSelectedBookId(null);
+  }
 
   function handleBorrow(book: Book) {
     if (!user) {
@@ -103,15 +107,25 @@ export function CatalogPage() {
     navigate(`/espace/emprunts?bookId=${book.id}`);
   }
 
+  const isStaffAdminView = variant === "staff-admin";
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <PageHeader
-        eyebrow="Catalogue"
-        title="Parcourir les ouvrages"
-        description="Consultation publique du catalogue. L'emprunt et les recommandations personnalisees necessitent une connexion."
+        eyebrow={isStaffAdminView ? "Personnel" : "Catalogue"}
+        title={isStaffAdminView ? "Catalogue admin" : "Parcourir les ouvrages"}
+        description={
+          isStaffAdminView
+            ? "Gestion des ouvrages : ajout, modification et suppression dans le catalogue."
+            : "Consultation publique du catalogue. L'emprunt et les recommandations personnalisees necessitent une connexion."
+        }
         actions={
-          isStaff(user) ? (
-            <BookAdminPanel selectedBook={selectedBook} onClearSelection={() => setSelectedBookId(null)} />
+          isStaffAdminView ? (
+            <BookAdminPanel
+              dialog={bookDialog}
+              onDialogChange={setBookDialog}
+              onComplete={clearBookSelection}
+            />
           ) : null
         }
       />
@@ -178,7 +192,16 @@ export function CatalogPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-xl">{book.titre}</CardTitle>
-                    <Badge variant="secondary">#{book.id}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">#{book.id}</Badge>
+                      {isStaffAdminView ? (
+                        <BookCardAdminMenu
+                          book={book}
+                          onEdit={() => setBookDialog({ mode: "edit", book })}
+                          onDelete={() => setBookDialog({ mode: "delete", book })}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                   <CardDescription>{book.auteur}</CardDescription>
                 </CardHeader>
@@ -186,7 +209,14 @@ export function CatalogPage() {
                   <p className="text-sm text-muted-foreground">{book.categorie || "Sans categorie"}</p>
                   {book.isbn ? <p className="text-sm text-muted-foreground">ISBN {book.isbn}</p> : null}
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => handleBorrow(book)}>Emprunter</Button>
+                    <Button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleBorrow(book);
+                      }}
+                    >
+                      Emprunter
+                    </Button>
                     {!user ? (
                       <Link
                         to={buildLoginUrl("/espace/emprunts", book.id)}

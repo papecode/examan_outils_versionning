@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatLoanDate, getLoanStatusLabel } from "@/lib/loans";
+import { formatLoanDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
 import type { Loan } from "@/types/loan";
 
 interface RecentLoansTableProps {
@@ -44,7 +44,9 @@ export function RecentLoansTable({ title, loans, bookLabel, showUser = false }: 
                   <TableCell>{bookLabel(loan)}</TableCell>
                   <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{getLoanStatusLabel(loan)}</Badge>
+                    <Badge variant={isLoanOverdue(loan) ? "destructive" : "secondary"}>
+                      {getLoanStatusLabel(loan)}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

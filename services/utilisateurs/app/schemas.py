@@ -19,6 +19,13 @@ class UserCreate(BaseModel):
     password: str | None = Field(default=None, min_length=6, max_length=128)
 
 
+class UserUpdate(BaseModel):
+    nom: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
+    type_utilisateur: Literal["Etudiant", "Professeur", "Personnel"] | None = None
+    password: str | None = Field(default=None, min_length=6, max_length=128)
+
+
 class LoginRequest(BaseModel):
     identifier: str = Field(min_length=1)
     password: str = Field(min_length=1)
