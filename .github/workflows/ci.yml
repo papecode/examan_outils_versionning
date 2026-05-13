@@ -68,6 +68,26 @@ jobs:
           python-version: "3.12"
       - run: python -m compileall scripts
 
+  pytest:
+    name: Backend API tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - run: pip install -r services/livres/requirements.txt -r services/emprunts/requirements.txt
+      - name: Run livres tests
+        run: python -m pytest services/livres/tests
+        env:
+          PYTHONPATH: services/livres
+      - name: Run emprunts tests
+        run: python -m pytest services/emprunts/tests
+        env:
+          PYTHONPATH: services/emprunts
+
   docker:
     name: Docker Compose build
     runs-on: ubuntu-latest
@@ -103,5 +123,34 @@ jobs:
               sleep 5
             done
           done
+      - name: Wait for frontend production
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "http://localhost:3000" >/dev/null; then
+              echo "Frontend available on port 3000"
+              exit 0
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              echo "Frontend failed to start on port 3000"
+              docker compose --profile prod ps
+              docker compose --profile prod logs frontend-prod
+              exit 1
+            fi
+            sleep 5
+          done
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Playwright smoke
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
       - if: always()
         run: docker compose --profile prod down -v

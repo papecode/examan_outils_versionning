@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     db_host: str = "db"
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     loans_export_path: str = "/data/loans.csv"
-    loan_duration_days: int = 14
+    loan_duration_days: int = 7
 
     @property
     def database_url(self) -> str:

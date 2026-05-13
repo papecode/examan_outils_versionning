@@ -56,7 +56,7 @@ services:
       - ./data:/data
     environment:
       - LOANS_EXPORT_PATH=/data/loans.csv
-      - LOAN_DURATION_DAYS=14
+      - LOAN_DURATION_DAYS=7
     depends_on:
       db:
         condition: service_healthy

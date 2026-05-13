@@ -25,6 +25,10 @@ cp .env.example .env
 cp frontend/.env.example frontend/.env
 ```
 
+### CORS (dev et production)
+
+Les microservices lisent `CORS_ORIGINS` depuis `.env` (voir [`.env.example`](.env.example)). En developpement, les origines `http://localhost:5173` et `http://localhost:3000` suffisent. Avant un deploiement, ajoutez l'URL publique du frontend (sans slash final) a la meme variable, puis redemarrez les services API.
+
 ## Frontend seul (dev local)
 
 ```bash
@@ -59,7 +63,8 @@ Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'execute sur
 | `backend` | `pip install` et `python -m compileall` pour chaque microservice |
 | `ml-scripts` | `python -m compileall scripts` (pipeline ML, sans `dvc repro` en CI) |
 | `docker` | `docker compose --profile prod build` apres copie de `.env.example` vers `.env` |
-| `integration` | `docker compose --profile prod up -d`, controle de `GET /health` sur les ports 8000, 8001, 8003 et 8004, puis `docker compose down -v` |
+| `integration` | `docker compose --profile prod up -d`, controle de `GET /health`, smoke Playwright sur le frontend prod, puis `docker compose down -v` |
+| `pytest` | Tests API cibles sur les services `livres` et `emprunts` |
 
 Commandes locales equivalentes :
 

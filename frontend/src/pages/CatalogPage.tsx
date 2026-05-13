@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { listBooks, searchBooks } from "@/api/books";
+import { getBookFacets, listBooks, searchBooks } from "@/api/books";
 import { BookAdminPanel, BookCardAdminMenu, type BookAdminDialogState } from "@/components/books/BookAdminPanel";
 import { CatalogFilters } from "@/components/books/CatalogFilters";
 import { ListSurface } from "@/components/layout/ListSurface";
@@ -16,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
 import { buildLoginUrl } from "@/lib/navigation";
-import { paginateArray } from "@/lib/pagination";
 import { DEFAULT_PAGE_SIZE } from "@/types/pagination";
 import { cn } from "@/lib/utils";
 import type { Book } from "@/types/book";
@@ -41,41 +40,32 @@ export function CatalogPage({ variant = "public" }: CatalogPageProps) {
     resetKey: `${query}-${category}-${author}`,
   });
 
-  const booksQuery = useQuery({
-    queryKey: ["books", query],
-    queryFn: () =>
-      query.trim()
-        ? searchBooks(query.trim(), { page: 1, pageSize: 500 })
-        : listBooks({ page: 1, pageSize: 500 }),
+  const selectedCategory = category === "all" ? undefined : category;
+  const selectedAuthor = author === "all" ? undefined : author;
+
+  const facetsQuery = useQuery({
+    queryKey: ["books", "facets"],
+    queryFn: getBookFacets,
   });
 
-  const filteredBooks = useMemo(() => {
-    const items = booksQuery.data?.items ?? [];
-    return items.filter((book) => {
-      const categoryMatch = category === "all" || book.categorie === category;
-      const authorMatch = author === "all" || book.auteur === author;
-      return categoryMatch && authorMatch;
-    });
-  }, [booksQuery.data?.items, category, author]);
+  const booksQuery = useQuery({
+    queryKey: ["books", "catalog", page, pageSize, query, selectedCategory, selectedAuthor],
+    queryFn: () => {
+      const params = {
+        page,
+        pageSize,
+        categorie: selectedCategory,
+        auteur: selectedAuthor,
+      };
+      return query.trim()
+        ? searchBooks(query.trim(), params)
+        : listBooks(params);
+    },
+  });
 
-  const paginated = useMemo(
-    () => paginateArray(filteredBooks, page, pageSize),
-    [filteredBooks, page, pageSize],
-  );
-
-  const categories = useMemo(
-    () =>
-      Array.from(
-        new Set((booksQuery.data?.items ?? []).map((book) => book.categorie).filter(Boolean)),
-      ).sort(),
-    [booksQuery.data?.items],
-  );
-
-  const authors = useMemo(
-    () =>
-      Array.from(new Set((booksQuery.data?.items ?? []).map((book) => book.auteur).filter(Boolean))).sort(),
-    [booksQuery.data?.items],
-  );
+  const books = booksQuery.data;
+  const categories = facetsQuery.data?.categories ?? [];
+  const authors = facetsQuery.data?.authors ?? [];
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -149,9 +139,9 @@ export function CatalogPage({ variant = "public" }: CatalogPageProps) {
       <ListSurface
         footer={
           <PaginationControls
-            page={paginated.page}
-            pageSize={paginated.pageSize}
-            total={paginated.total}
+            page={books?.page ?? page}
+            pageSize={books?.pageSize ?? pageSize}
+            total={books?.total ?? 0}
             onPageChange={setPage}
           />
         }
@@ -171,16 +161,16 @@ export function CatalogPage({ variant = "public" }: CatalogPageProps) {
           </Alert>
         ) : null}
 
-        {!booksQuery.isLoading && paginated.items.length === 0 ? (
+        {!booksQuery.isLoading && (books?.items.length ?? 0) === 0 ? (
           <Alert>
             <AlertTitle>Aucun resultat</AlertTitle>
             <AlertDescription>Aucun livre ne correspond a votre recherche.</AlertDescription>
           </Alert>
         ) : null}
 
-        {paginated.items.length > 0 ? (
+        {(books?.items.length ?? 0) > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginated.items.map((book) => (
+            {books?.items.map((book) => (
               <Card
                 key={book.id}
                 className={cn(

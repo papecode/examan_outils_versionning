@@ -1,18 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listBooks } from "@/api/books";
-import { getLoanHistory } from "@/api/loans";
+import { getLoanHistory, getLoanStats } from "@/api/loans";
 import { listUsers } from "@/api/users";
 import { RecentLoansTable } from "@/components/dashboard/RecentLoansTable";
 import { QuickActions, StatisticsBlock } from "@/components/dashboard/StatisticsBlock";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { isLoanActive, isLoanOverdue } from "@/lib/loans";
-import { paginateArray } from "@/lib/pagination";
 import type { Book } from "@/types/book";
+import type { User } from "@/types/user";
 
 function buildBookMap(books: Book[]): Map<number, Book> {
   return new Map(books.map((book) => [book.id, book]));
+}
+
+function buildUserMap(users: User[]): Map<number, User> {
+  return new Map(users.map((user) => [user.id, user]));
 }
 
 export function StaffDashboardPage() {
@@ -28,18 +31,28 @@ export function StaffDashboardPage() {
     queryFn: () => listBooks({ page: 1, pageSize: 200 }),
   });
 
-  const historyQuery = useQuery({
-    queryKey: ["loans", "history", "dashboard"],
-    queryFn: getLoanHistory,
+  const statsQuery = useQuery({
+    queryKey: ["loans", "stats", "dashboard"],
+    queryFn: getLoanStats,
   });
 
-  const history = historyQuery.data ?? [];
-  const paginatedHistory = paginateArray(history, 1, 6).items;
+  const historyQuery = useQuery({
+    queryKey: ["loans", "history", "dashboard"],
+    queryFn: () => getLoanHistory({ page: 1, pageSize: 6 }),
+  });
+
+  const recentHistory = historyQuery.data?.items ?? [];
   const bookMap = buildBookMap(booksQuery.data?.items ?? []);
+  const userMap = buildUserMap(usersQuery.data?.items ?? []);
 
   const bookLabel = (loan: { book_id: number }) => {
     const book = bookMap.get(loan.book_id);
     return book ? book.titre : `#${loan.book_id}`;
+  };
+
+  const userLabel = (loan: { user_id: number }) => {
+    const account = userMap.get(loan.user_id);
+    return account ? account.nom : `#${loan.user_id}`;
   };
 
   return (
@@ -63,11 +76,11 @@ export function StaffDashboardPage() {
             },
             {
               label: "Emprunts actifs",
-              value: String(history.filter(isLoanActive).length),
+              value: statsQuery.isError ? "-" : String(statsQuery.data?.active ?? 0),
             },
             {
               label: "Retards",
-              value: String(history.filter(isLoanOverdue).length),
+              value: statsQuery.isError ? "-" : String(statsQuery.data?.overdue ?? 0),
             },
           ]}
         />
@@ -75,8 +88,9 @@ export function StaffDashboardPage() {
       <div className="col-span-12 xl:col-span-8">
         <RecentLoansTable
           title="Derniers emprunts"
-          loans={paginatedHistory}
+          loans={recentHistory}
           bookLabel={bookLabel}
+          userLabel={userLabel}
           showUser
         />
       </div>

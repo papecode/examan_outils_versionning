@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_staff
 from app.models import Book
-from app.schemas import BookCreate, BookRead, PaginatedBooks
+from app.schemas import BookCreate, BookFacets, BookRead, PaginatedBooks
 
 router = APIRouter(tags=["books"])
 
@@ -57,6 +57,18 @@ def paginate_books(
     )
 
 
+@router.get("/books/facets", response_model=BookFacets)
+def get_book_facets(db: Session = Depends(get_db)) -> BookFacets:
+    categories = db.scalars(
+        select(Book.categorie)
+        .where(Book.categorie != "")
+        .distinct()
+        .order_by(Book.categorie)
+    ).all()
+    authors = db.scalars(select(Book.auteur).distinct().order_by(Book.auteur)).all()
+    return BookFacets(categories=list(categories), authors=list(authors))
+
+
 @router.get("/books", response_model=PaginatedBooks)
 def list_books(
     page: int = Query(1, ge=1),
@@ -79,14 +91,16 @@ def search_books(
     q: str = Query(min_length=1),
     page: int = Query(1, ge=1),
     pageSize: int = Query(6, ge=1, le=500),
+    categorie: str | None = None,
+    auteur: str | None = None,
     db: Session = Depends(get_db),
 ) -> PaginatedBooks:
     return paginate_books(
         db,
         normalize_page(page),
         normalize_page_size(pageSize),
-        None,
-        None,
+        categorie,
+        auteur,
         q,
     )
 

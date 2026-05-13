@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listBooks } from "@/api/books";
 import { getLoanHistory } from "@/api/loans";
+import { listUsers } from "@/api/users";
 import { ListSurface } from "@/components/layout/ListSurface";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PaginationControls } from "@/components/layout/PaginationControls";
@@ -18,40 +19,47 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
-import { formatLoanDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
-import { paginateArray } from "@/lib/pagination";
+import { formatLoanDate, formatLoanDueDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
 import type { Book } from "@/types/book";
-import type { Loan } from "@/types/loan";
-
-function matchesHistorySearch(loan: Loan, bookMap: Map<number, Book>, searchQuery: string): boolean {
-  const term = searchQuery.trim().toLowerCase();
-  if (!term) {
-    return true;
-  }
-  const bookTitle = bookMap.get(loan.book_id)?.titre.toLowerCase() ?? "";
-  const statusLabel = getLoanStatusLabel(loan).toLowerCase();
-  return (
-    String(loan.user_id).includes(term) ||
-    String(loan.book_id).includes(term) ||
-    bookTitle.includes(term) ||
-    statusLabel.includes(term) ||
-    (loan.statut ?? "").toLowerCase().includes(term)
-  );
-}
+import type { User } from "@/types/user";
 
 export function StaffLoansHistoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { page, pageSize, setPage } = usePagination({ resetKey: searchQuery });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { page, pageSize, setPage } = usePagination({ resetKey: debouncedSearch });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
   const historyQuery = useQuery({
-    queryKey: ["loans", "history"],
-    queryFn: getLoanHistory,
+    queryKey: ["loans", "history", page, pageSize, debouncedSearch],
+    queryFn: () =>
+      getLoanHistory({
+        page,
+        pageSize,
+        q: debouncedSearch.trim() || undefined,
+      }),
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["users", "staff-history"],
+    queryFn: () => listUsers({ page: 1, pageSize: 500 }),
   });
 
   const booksQuery = useQuery({
     queryKey: ["books", "staff-history"],
     queryFn: () => listBooks({ page: 1, pageSize: 500 }),
   });
+
+  const userMap = useMemo(() => {
+    const map = new Map<number, User>();
+    for (const user of usersQuery.data?.items ?? []) {
+      map.set(user.id, user);
+    }
+    return map;
+  }, [usersQuery.data?.items]);
 
   const bookMap = useMemo(() => {
     const map = new Map<number, Book>();
@@ -61,15 +69,7 @@ export function StaffLoansHistoryPage() {
     return map;
   }, [booksQuery.data?.items]);
 
-  const filteredHistory = useMemo(() => {
-    const history = historyQuery.data ?? [];
-    return history.filter((loan) => matchesHistorySearch(loan, bookMap, searchQuery));
-  }, [historyQuery.data, bookMap, searchQuery]);
-
-  const paginated = useMemo(
-    () => paginateArray(filteredHistory, page, pageSize),
-    [filteredHistory, page, pageSize],
-  );
+  const history = historyQuery.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,9 +87,9 @@ export function StaffLoansHistoryPage() {
       <ListSurface
         footer={
           <PaginationControls
-            page={paginated.page}
-            pageSize={paginated.pageSize}
-            total={paginated.total}
+            page={history?.page ?? page}
+            pageSize={history?.pageSize ?? pageSize}
+            total={history?.total ?? 0}
             onPageChange={setPage}
           />
         }
@@ -101,34 +101,36 @@ export function StaffLoansHistoryPage() {
             <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
           </Alert>
         ) : null}
-        {!historyQuery.isLoading && paginated.items.length === 0 ? (
+        {!historyQuery.isLoading && (history?.items.length ?? 0) === 0 ? (
           <Alert>
             <AlertDescription>
-              {searchQuery.trim()
+              {debouncedSearch.trim()
                 ? "Aucun emprunt ne correspond a votre recherche."
                 : "Aucun emprunt enregistre."}
             </AlertDescription>
           </Alert>
         ) : null}
-        {paginated.items.length > 0 ? (
+        {(history?.items.length ?? 0) > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Utilisateur</TableHead>
                 <TableHead>Livre</TableHead>
                 <TableHead>Emprunt</TableHead>
-                <TableHead>Retour</TableHead>
+                <TableHead>Echeance</TableHead>
+                <TableHead>Rendu le</TableHead>
                 <TableHead>Statut</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginated.items.map((loan, index) => (
+              {history?.items.map((loan, index) => (
                 <TableRow key={`${loan.user_id}-${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                  <TableCell>#{loan.user_id}</TableCell>
+                  <TableCell>{userMap.get(loan.user_id)?.nom ?? `#${loan.user_id}`}</TableCell>
                   <TableCell>
                     {bookMap.get(loan.book_id)?.titre ?? `#${loan.book_id}`}
                   </TableCell>
                   <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
+                  <TableCell>{formatLoanDueDate(loan)}</TableCell>
                   <TableCell>{formatLoanDate(loan.date_retour)}</TableCell>
                   <TableCell>
                     <Badge variant={isLoanOverdue(loan) ? "destructive" : "secondary"}>

@@ -23,3 +23,8 @@ class PaginatedBooks(BaseModel):
     total: int
     page: int
     pageSize: int
+
+
+class BookFacets(BaseModel):
+    categories: list[str]
+    authors: list[str]

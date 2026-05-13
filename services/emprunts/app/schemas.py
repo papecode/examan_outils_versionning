@@ -9,6 +9,7 @@ class LoanRead(BaseModel):
     user_id: int
     book_id: int
     date_emprunt: datetime | None = None
+    date_echeance: datetime | None = None
     date_retour: datetime | None = None
     statut: str | None = None
 
@@ -33,3 +34,9 @@ class PaginatedLoans(BaseModel):
     total: int
     page: int
     pageSize: int
+
+
+class LoanStats(BaseModel):
+    total: int
+    active: int
+    overdue: int

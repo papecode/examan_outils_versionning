@@ -15,10 +15,17 @@ interface RecentLoansTableProps {
   title: string;
   loans: Loan[];
   bookLabel: (loan: Loan) => string;
+  userLabel?: (loan: Loan) => string;
   showUser?: boolean;
 }
 
-export function RecentLoansTable({ title, loans, bookLabel, showUser = false }: RecentLoansTableProps) {
+export function RecentLoansTable({
+  title,
+  loans,
+  bookLabel,
+  userLabel,
+  showUser = false,
+}: RecentLoansTableProps) {
   return (
     <Card className="border-border/80">
       <CardHeader>
@@ -40,7 +47,9 @@ export function RecentLoansTable({ title, loans, bookLabel, showUser = false }: 
             <TableBody>
               {loans.map((loan, index) => (
                 <TableRow key={`${loan.user_id}-${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                  {showUser ? <TableCell>#{loan.user_id}</TableCell> : null}
+                  {showUser ? (
+                    <TableCell>{userLabel ? userLabel(loan) : `#${loan.user_id}`}</TableCell>
+                  ) : null}
                   <TableCell>{bookLabel(loan)}</TableCell>
                   <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
                   <TableCell>

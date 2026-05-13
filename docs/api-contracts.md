@@ -47,6 +47,7 @@ Reponse ideale : `{ items: User[], total, page, pageSize }`. Si le backend renvo
 | Methode | Route | Usage UI |
 | --- | --- | --- |
 | `GET` | `/books` | Catalogue |
+| `GET` | `/books/facets` | Listes distinctes categories / auteurs pour les filtres UI |
 | `GET` | `/search?q=` | Recherche titre / auteur / ISBN |
 | `POST` | `/books` | Ajout |
 | `PUT` | `/books/{book_id}` | Modification |
@@ -56,11 +57,11 @@ Modele `Book` : `id`, `titre`, `auteur`, `categorie`, `isbn?`.
 
 ### Pagination `GET /books` et `GET /search`
 
-Query params : `page`, `pageSize` (defaut UI `6`), `q` pour la recherche.
+Query params : `page`, `pageSize` (defaut UI `6`), `q` pour la recherche, `categorie` et `auteur` optionnels sur `GET /books` et `GET /search`.
 
-Filtres catalogue prevus (optionnels, backend a implementer) : `categorie`, `auteur`. En attendant, le frontend filtre en client sur le jeu charge.
+Reponse : `{ items: Book[], total, page, pageSize }`.
 
-Reponse ideale : `{ items: Book[], total, page, pageSize }`. Tableau simple accepte : pagination client cote frontend.
+`GET /books/facets` renvoie `{ categories: string[], authors: string[] }`.
 
 ## Emprunts
 
@@ -69,14 +70,21 @@ Reponse ideale : `{ items: Book[], total, page, pageSize }`. Tableau simple acce
 | `POST` | `/loans` | Emprunter |
 | `GET` | `/loans/user/{user_id}` | Historique utilisateur |
 | `GET` | `/loans/history` | Historique global |
+| `GET` | `/loans/stats` | Compteurs globaux (`total`, `active`, `overdue`) pour le tableau de bord Personnel |
 | `POST` | `/loans/return` | Retour (`user_id`, `book_id`) |
 | `GET` | `/loans/export` | Export ML (hors UI etudiant) |
 
-Modele `Loan` : `user_id`, `book_id`, `date_emprunt?`, `date_retour?`, `statut?` (`actif`, `retourne`, `en_retard`).
+Modele `Loan` : `user_id`, `book_id`, `date_emprunt?`, `date_echeance?` (emprunt + `LOAN_DURATION_DAYS`, defaut 7), `date_retour?` (retour effectif), `statut?` (`actif`, `retourne`, `en_retard`).
 
 ### Pagination `GET /loans/user/{user_id}`
 
 Query params : `page`, `pageSize` (defaut UI `6`). Meme forme de reponse paginee que ci-dessus.
+
+### Pagination `GET /loans/history`
+
+Query params : `page`, `pageSize` (defaut UI `6`), `q` optionnel (filtre `user_id`, `book_id`, `statut`, `users.nom`, `users.email`, `books.titre`).
+
+Reponse : `{ items: Loan[], total, page, pageSize }`.
 
 ## Recommandation
 
@@ -105,9 +113,9 @@ Le modele serialise est un dictionnaire `user_id -> list[book_id]` (cle `default
 
 Le frontend mappe `detail` (string ou premier `msg` d'un tableau) vers un message utilisateur lisible.
 
-## Ecarts a implementer cote backend
+## CORS
 
-- CORS explicite en production pour l'origine deployee du frontend.
+Les microservices lisent `CORS_ORIGINS` (liste separee par des virgules) depuis `.env`. Ajouter l'origine publique du frontend avant deploiement ; voir [README.md](../README.md).
 
 ## CI/CD
 

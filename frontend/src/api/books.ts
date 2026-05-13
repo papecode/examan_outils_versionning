@@ -6,16 +6,42 @@ import { requestJson } from "./http";
 
 const base = apiConfig.books;
 
-export async function listBooks(params: PaginationParams = {}): Promise<PaginatedResponse<Book>> {
+export interface BookQueryParams extends PaginationParams {
+  categorie?: string;
+  auteur?: string;
+}
+
+export interface BookFacets {
+  categories: string[];
+  authors: string[];
+}
+
+function buildBookQuery(params: BookQueryParams = {}): string {
+  const search = new URLSearchParams(buildPaginationQuery(params).replace(/^\?/, ""));
+  if (params.categorie) {
+    search.set("categorie", params.categorie);
+  }
+  if (params.auteur) {
+    search.set("auteur", params.auteur);
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+export function getBookFacets(): Promise<BookFacets> {
+  return requestJson<BookFacets>(`${base}/books/facets`);
+}
+
+export async function listBooks(params: BookQueryParams = {}): Promise<PaginatedResponse<Book>> {
   const response = await requestJson<Book[] | PaginatedResponse<Book>>(
-    `${base}/books${buildPaginationQuery(params)}`,
+    `${base}/books${buildBookQuery(params)}`,
   );
   return toPaginatedResponse(response, params);
 }
 
 export async function searchBooks(
   query: string,
-  params: PaginationParams = {},
+  params: BookQueryParams = {},
 ): Promise<PaginatedResponse<Book>> {
   const search = new URLSearchParams({ q: query });
   if (params.page) {
@@ -23,6 +49,12 @@ export async function searchBooks(
   }
   if (params.pageSize) {
     search.set("pageSize", String(params.pageSize));
+  }
+  if (params.categorie) {
+    search.set("categorie", params.categorie);
+  }
+  if (params.auteur) {
+    search.set("auteur", params.auteur);
   }
   const response = await requestJson<Book[] | PaginatedResponse<Book>>(
     `${base}/search?${search.toString()}`,
