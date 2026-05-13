@@ -61,10 +61,9 @@ export function AuthPage() {
 
   return (
     <AuthLayout
-      title="Connexion a l'espace emprunt"
-      description="Utilisez votre email institutionnel ou votre identifiant numerique. Les comptes sont crees par le personnel de la bibliotheque."
+      mode="signIn"
       footer={
-        <p className="text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Mot de passe oublie ?{" "}
           <Link to="/mot-de-passe-oublie" className="text-primary underline-offset-4 hover:underline">
             Reinitialiser par email
@@ -104,7 +103,7 @@ export function AuthPage() {
           </Alert>
         ) : null}
 
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Connexion..." : "Se connecter"}
         </Button>
       </form>

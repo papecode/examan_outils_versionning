@@ -42,10 +42,9 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      title="Mot de passe oublie"
-      description="Saisissez l'email institutionnel associe a votre compte. La reponse reste volontairement generique."
+      mode="forgotPassword"
       footer={
-        <p className="text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           <Link to="/connexion" className="text-primary underline-offset-4 hover:underline">
             Retour a la connexion
           </Link>
@@ -78,7 +77,7 @@ export function ForgotPasswordPage() {
             </Alert>
           ) : null}
 
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Envoi..." : "Envoyer les instructions"}
           </Button>
         </form>

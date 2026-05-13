@@ -31,9 +31,10 @@ export function AppRouter() {
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="catalogue" element={<CatalogPage />} />
-        <Route path="connexion" element={<AuthPage />} />
-        <Route path="mot-de-passe-oublie" element={<ForgotPasswordPage />} />
       </Route>
+
+      <Route path="connexion" element={<AuthPage />} />
+      <Route path="mot-de-passe-oublie" element={<ForgotPasswordPage />} />
 
       <Route
         path="/espace"

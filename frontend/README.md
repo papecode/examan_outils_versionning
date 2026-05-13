@@ -28,14 +28,19 @@ Copier `.env.example` vers `.env`. Variables `VITE_*` :
 
 - `/` landing vitrine
 - `/catalogue` consultation publique, recherche et pagination (`?q=`, `?page=`)
-- `/connexion` authentification (email ou ID + mot de passe)
-- `/mot-de-passe-oublie` reinitialisation par email (message generique)
+- `/connexion` authentification (email ou ID + mot de passe), layout dedie plein ecran
+- `/mot-de-passe-oublie` reinitialisation par email (message generique), meme layout auth
 - `/espace/emprunts` emprunts (connecte)
 - `/espace/recommandations` recommandations ML (connecte)
 - `/espace/profil` profil utilisateur (connecte)
 - `/espace/personnel/comptes` gestion des comptes (Personnel uniquement)
 
 Le CRUD livres sur `/catalogue` est reserve au profil `Personnel`. Il n'existe pas de page d'inscription publique.
+
+## Branding
+
+- Logo DIT local : `public/brand/dit-logo.png` (composant `DitLogo`).
+- Les routes `/connexion` et `/mot-de-passe-oublie` n'utilisent pas la navbar publique.
 
 ## Contrat API
 

@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { DitLogo } from "@/components/brand/DitLogo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,10 +37,7 @@ export function SiteNavbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-6">
-        <Link to="/" className="flex flex-col gap-0.5">
-          <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">DIT</span>
-          <span className="font-heading text-xl font-semibold leading-none">Bibliotheque numerique</span>
-        </Link>
+        <DitLogo />
 
         <nav className="hidden items-center gap-6 md:flex">
           {publicLinks.map((link) => (

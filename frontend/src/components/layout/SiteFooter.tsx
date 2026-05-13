@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { DitLogo } from "@/components/brand/DitLogo";
 import { Separator } from "@/components/ui/separator";
 
 export function SiteFooter() {
@@ -6,7 +7,10 @@ export function SiteFooter() {
     <footer className="border-t border-border/70 bg-secondary/40">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 md:px-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <p className="font-heading text-lg">Bibliotheque numerique DIT</p>
+          <div className="flex flex-col gap-2">
+            <DitLogo imageClassName="h-7 md:h-8" />
+            <p className="text-sm text-muted-foreground">Bibliotheque numerique</p>
+          </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <Link to="/catalogue">Catalogue</Link>
             <Link to="/connexion">Connexion</Link>
