@@ -36,8 +36,8 @@ export function SiteNavbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-6">
-        <DitLogo />
+      <div className="mx-auto flex min-w-0 max-w-6xl items-center justify-between gap-3 px-4 py-4 md:gap-4 md:px-6">
+        <DitLogo imageClassName="h-8 w-auto max-w-[9rem] sm:max-w-none sm:h-9" />
 
         <nav className="hidden items-center gap-6 md:flex">
           {publicLinks.map((link) => (
@@ -71,7 +71,16 @@ export function SiteNavbar() {
         </div>
 
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger render={<Button variant="outline" size="icon" className="md:hidden" aria-label="Ouvrir le menu" />}>
+          <SheetTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 md:hidden"
+                aria-label="Ouvrir le menu"
+              />
+            }
+          >
             <Menu />
           </SheetTrigger>
           <SheetContent side="right">

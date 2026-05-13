@@ -100,7 +100,7 @@ export function CatalogPage({ variant = "public" }: CatalogPageProps) {
   const isStaffAdminView = variant === "staff-admin";
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+    <div className="mx-auto min-w-0 max-w-6xl px-4 py-8 md:px-6 md:py-10">
       <PageHeader
         eyebrow={isStaffAdminView ? "Personnel" : "Catalogue"}
         title={isStaffAdminView ? "Catalogue admin" : "Parcourir les ouvrages"}
@@ -181,7 +181,7 @@ export function CatalogPage({ variant = "public" }: CatalogPageProps) {
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-xl">{book.titre}</CardTitle>
+                    <CardTitle className="text-lg break-words sm:text-xl">{book.titre}</CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">#{book.id}</Badge>
                       {isStaffAdminView ? (

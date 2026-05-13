@@ -52,12 +52,12 @@ export function MemberDashboardPage({ title, description }: MemberDashboardPageP
   };
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-12 gap-6">
-      <div className="col-span-12">
-        <h1 className="font-heading text-3xl font-semibold">{title}</h1>
-        <p className="mt-2 text-muted-foreground">{description}</p>
+    <div className="mx-auto grid min-w-0 max-w-7xl grid-cols-1 gap-6 xl:grid-cols-12">
+      <div className="xl:col-span-12">
+        <h1 className="font-heading text-2xl font-semibold sm:text-3xl">{title}</h1>
+        <p className="mt-2 text-pretty text-muted-foreground">{description}</p>
       </div>
-      <div className="col-span-12">
+      <div className="xl:col-span-12">
         <StatisticsBlock
           items={[
             { label: "Emprunts actifs", value: String(activeLoans.length) },
@@ -70,10 +70,10 @@ export function MemberDashboardPage({ title, description }: MemberDashboardPageP
           ]}
         />
       </div>
-      <div className="col-span-12 xl:col-span-8">
+      <div className="xl:col-span-8">
         <RecentLoansTable title="Emprunts recents" loans={loans.slice(0, 6)} bookLabel={bookLabel} />
       </div>
-      <div className="col-span-12 xl:col-span-4">
+      <div className="xl:col-span-4">
         <QuickActions>
           <Link to="/espace/emprunts">
             <Button>Emprunter</Button>

@@ -112,7 +112,7 @@ export function StaffAccountsPage() {
   const users = usersQuery.data?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         eyebrow="Personnel"
         title="Gestion des comptes"
@@ -168,7 +168,7 @@ export function StaffAccountsPage() {
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
         placeholder="Rechercher par nom, email ou identifiant"
-        className="max-w-xl"
+        className="w-full max-w-xl"
       />
 
       <ListSurface

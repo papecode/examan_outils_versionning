@@ -4,9 +4,9 @@ import { SiteNavbar } from "@/components/layout/SiteNavbar";
 
 export function PublicLayout() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-svh min-w-0 flex-col overflow-x-clip">
       <SiteNavbar />
-      <main className="flex-1">
+      <main className="min-w-0 flex-1">
         <Outlet />
       </main>
       <SiteFooter />

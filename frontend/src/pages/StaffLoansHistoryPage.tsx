@@ -72,7 +72,7 @@ export function StaffLoansHistoryPage() {
   const history = historyQuery.data;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         eyebrow="Personnel"
         title="Historique global des emprunts"
@@ -82,7 +82,7 @@ export function StaffLoansHistoryPage() {
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
         placeholder="Rechercher par utilisateur, livre ou statut"
-        className="max-w-xl"
+        className="w-full max-w-xl"
       />
       <ListSurface
         footer={
@@ -125,8 +125,10 @@ export function StaffLoansHistoryPage() {
             <TableBody>
               {history?.items.map((loan, index) => (
                 <TableRow key={`${loan.user_id}-${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                  <TableCell>{userMap.get(loan.user_id)?.nom ?? `#${loan.user_id}`}</TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-[10rem] whitespace-normal sm:max-w-none">
+                    {userMap.get(loan.user_id)?.nom ?? `#${loan.user_id}`}
+                  </TableCell>
+                  <TableCell className="max-w-[12rem] whitespace-normal sm:max-w-none">
                     {bookMap.get(loan.book_id)?.titre ?? `#${loan.book_id}`}
                   </TableCell>
                   <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>

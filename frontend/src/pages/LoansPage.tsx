@@ -130,7 +130,7 @@ export function LoansPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         eyebrow="Espace personnel"
         title="Emprunts"
@@ -218,7 +218,7 @@ export function LoansPage() {
                 <TableBody>
                   {paginatedLoans.items.map((loan, index) => (
                     <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                      <TableCell>{getBookTitle(loan)}</TableCell>
+                      <TableCell className="max-w-[12rem] whitespace-normal sm:max-w-none">{getBookTitle(loan)}</TableCell>
                       <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
                       <TableCell>{formatLoanDate(loan.date_retour)}</TableCell>
                       <TableCell>
