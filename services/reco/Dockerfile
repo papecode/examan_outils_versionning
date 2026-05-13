@@ -1,17 +1,16 @@
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-COPY README.md ./
-
 FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN useradd --create-home --uid 10001 appuser
-USER appuser
+COPY services/reco/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --from=builder /app/README.md ./
+COPY services/reco/app ./app
+
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 
-CMD ["python", "-c", "print('Service reco: implementation backend a fournir')"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

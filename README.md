@@ -33,11 +33,13 @@ npm run dev
 
 ## Stack complete
 
-Profil developpement (hot-reload frontend) :
+Profil developpement (hot-reload frontend + APIs) :
 
 ```bash
 docker compose --profile dev up --build
 ```
+
+Comptes de demonstration (service utilisateurs) : `admin@dit.local`, `etudiant@dit.local`, `professeur@dit.local` avec le mot de passe `dit123` (`DEFAULT_PASSWORD` dans `.env`).
 
 Profil production (build statique nginx) :
 

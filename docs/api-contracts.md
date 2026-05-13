@@ -100,8 +100,5 @@ Le frontend mappe `detail` (string ou premier `msg` d'un tableau) vers un messag
 
 ## Ecarts a implementer cote backend
 
-- Endpoints `/auth/login` et `/auth/forgot-password`.
-- Persistance PostgreSQL des emprunts et calcul des retards.
-- Reponses paginees optionnelles sur les listes.
-- Recherche ISBN si le champ est ajoute au schema livres.
-- CORS explicite sur chaque service pour l'origine du frontend en production.
+- Pipeline DVC / entrainement reel du modele (`POST /train` renvoie 503 tant que le pipeline ML n'est pas branche).
+- CORS explicite en production pour l'origine deployee du frontend.
