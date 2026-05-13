@@ -56,14 +56,14 @@ export function StaffDashboardPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-12 gap-6">
-      <div className="col-span-12">
-        <h1 className="font-heading text-3xl font-semibold">Tableau de bord personnel</h1>
-        <p className="mt-2 text-muted-foreground">
+    <div className="mx-auto grid min-w-0 max-w-7xl grid-cols-1 gap-6 xl:grid-cols-12">
+      <div className="xl:col-span-12">
+        <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Tableau de bord personnel</h1>
+        <p className="mt-2 text-pretty text-muted-foreground">
           Vue d&apos;ensemble des comptes, ouvrages et emprunts de la bibliotheque.
         </p>
       </div>
-      <div className="col-span-12">
+      <div className="xl:col-span-12">
         <StatisticsBlock
           items={[
             {
@@ -85,7 +85,7 @@ export function StaffDashboardPage() {
           ]}
         />
       </div>
-      <div className="col-span-12 xl:col-span-8">
+      <div className="xl:col-span-8">
         <RecentLoansTable
           title="Derniers emprunts"
           loans={recentHistory}
@@ -94,7 +94,7 @@ export function StaffDashboardPage() {
           showUser
         />
       </div>
-      <div className="col-span-12 xl:col-span-4">
+      <div className="xl:col-span-4">
         <QuickActions>
           <Link to="/espace/personnel/comptes">
             <Button>Gerer les comptes</Button>

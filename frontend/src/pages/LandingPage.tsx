@@ -31,11 +31,11 @@ export function LandingPage() {
       <section className="border-b border-border/70 bg-background">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 md:grid-cols-[1.2fr_0.8fr] md:px-6 md:py-24">
           <div className="flex flex-col gap-6">
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Dakar Institute of Technology</p>
-            <h1 className="font-heading text-4xl font-semibold leading-tight md:text-5xl">
+            <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">Dakar Institute of Technology</p>
+            <h1 className="font-heading text-3xl font-semibold leading-tight sm:text-4xl md:text-5xl">
               La bibliotheque academique, claire et accessible.
             </h1>
-            <p className="max-w-2xl text-lg text-muted-foreground">
+            <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
               Consultez le catalogue, empruntez vos references et decouvrez des recommandations
               personnalisees dans une interface epuree.
             </p>
@@ -54,7 +54,7 @@ export function LandingPage() {
               <CardTitle>Comment emprunter</CardTitle>
               <CardDescription>Trois etapes pour acceder a un ouvrage.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
+            <CardContent className="flex flex-col gap-4 text-base text-muted-foreground">
               <p>1. Parcourez le catalogue public et choisissez un livre.</p>
               <p>2. Connectez-vous avec votre email institutionnel ou identifiant DIT.</p>
               <p>3. Finalisez l&apos;emprunt et suivez votre historique dans l&apos;espace personnel.</p>
@@ -65,8 +65,8 @@ export function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
         <div className="mb-8 flex flex-col gap-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Services</p>
-          <h2 className="font-heading text-3xl font-semibold">Une plateforme complete pour la communaute DIT</h2>
+          <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Services</p>
+          <h2 className="font-heading text-2xl font-semibold sm:text-3xl">Une plateforme complete pour la communaute DIT</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {highlights.map((item) => (
@@ -85,8 +85,8 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl px-4 py-16 md:px-6">
           <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Selection</p>
-              <h2 className="font-heading text-3xl font-semibold">Coups de coeur du catalogue</h2>
+              <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Selection</p>
+              <h2 className="font-heading text-2xl font-semibold sm:text-3xl">Coups de coeur du catalogue</h2>
             </div>
             <Link to="/catalogue" className={cn(buttonVariants({ variant: "outline" }))}>
               Voir tout le catalogue

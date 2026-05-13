@@ -84,13 +84,13 @@ export function StaffUsersTable({
 
   return (
     <Card className="overflow-hidden border-border/80 pb-0">
-      <CardHeader className="px-6">
+      <CardHeader className="px-4 sm:px-6">
         <CardTitle>Comptes enregistres</CardTitle>
         <CardDescription>Selectionnez des comptes ou utilisez le menu d&apos;actions.</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-3xl">
+          <Table className="min-w-[40rem]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="p-3 ps-6">

@@ -48,9 +48,11 @@ export function RecentLoansTable({
               {loans.map((loan, index) => (
                 <TableRow key={`${loan.user_id}-${loan.book_id}-${loan.date_emprunt ?? index}`}>
                   {showUser ? (
-                    <TableCell>{userLabel ? userLabel(loan) : `#${loan.user_id}`}</TableCell>
+                    <TableCell className="max-w-[12rem] whitespace-normal sm:max-w-none">
+                      {userLabel ? userLabel(loan) : `#${loan.user_id}`}
+                    </TableCell>
                   ) : null}
-                  <TableCell>{bookLabel(loan)}</TableCell>
+                  <TableCell className="max-w-[12rem] whitespace-normal sm:max-w-none">{bookLabel(loan)}</TableCell>
                   <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
                   <TableCell>
                     <Badge variant={isLoanOverdue(loan) ? "destructive" : "secondary"}>

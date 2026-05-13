@@ -8,14 +8,14 @@ export function DashboardShell() {
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
-          <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4">
-            <SidebarTrigger className="cursor-pointer" />
-            <span className="text-sm text-muted-foreground">Espace bibliotheque</span>
+        <SidebarInset className="min-w-0 overflow-x-clip">
+          <header className="sticky top-0 z-40 flex h-14 min-w-0 items-center gap-2 border-b bg-background px-4">
+            <SidebarTrigger className="shrink-0 cursor-pointer" />
+            <span className="truncate text-sm text-muted-foreground">Espace bibliotheque</span>
           </header>
-          <main className="flex-1 p-4 md:p-6">
+          <div className="min-w-0 flex-1 p-4 md:p-6">
             <Outlet />
-          </main>
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
