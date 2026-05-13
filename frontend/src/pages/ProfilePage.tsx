@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { getUserById } from "@/api/users";
-import { LoadingState } from "@/components/LoadingState";
-import { StatusMessage } from "@/components/StatusMessage";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 
 export function ProfilePage() {
@@ -16,34 +18,42 @@ export function ProfilePage() {
   const profile = profileQuery.data ?? user;
 
   return (
-    <section className="card">
-      <h2>Profil utilisateur</h2>
+    <div className="flex flex-col gap-6">
+      <PageHeader eyebrow="Espace personnel" title="Profil" />
 
-      {profileQuery.isLoading ? <LoadingState /> : null}
-      {profileQuery.isError ? (
-        <StatusMessage tone="error" message="Profil indisponible. Affichage de la session locale." />
-      ) : null}
-
-      {profile ? (
-        <dl className="profile-grid">
-          <div>
-            <dt>Identifiant</dt>
-            <dd>{profile.id}</dd>
-          </div>
-          <div>
-            <dt>Nom</dt>
-            <dd>{profile.nom}</dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{profile.email}</dd>
-          </div>
-          <div>
-            <dt>Profil</dt>
-            <dd>{profile.type_utilisateur}</dd>
-          </div>
-        </dl>
-      ) : null}
-    </section>
+      <Card className="border-border/80">
+        <CardHeader>
+          <CardTitle>Informations utilisateur</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {profileQuery.isLoading ? <Skeleton className="h-24 w-full" /> : null}
+          {profileQuery.isError ? (
+            <Alert>
+              <AlertDescription>Profil indisponible. Affichage de la session locale.</AlertDescription>
+            </Alert>
+          ) : null}
+          {profile ? (
+            <dl className="grid gap-4 md:grid-cols-2">
+              <div>
+                <dt className="text-sm text-muted-foreground">Identifiant</dt>
+                <dd className="text-lg font-medium">{profile.id}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Nom</dt>
+                <dd className="text-lg font-medium">{profile.nom}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Email</dt>
+                <dd className="text-lg font-medium">{profile.email || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Profil</dt>
+                <dd className="text-lg font-medium">{profile.type_utilisateur}</dd>
+              </div>
+            </dl>
+          ) : null}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

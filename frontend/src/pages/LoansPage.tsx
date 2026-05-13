@@ -1,46 +1,95 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { listBooks } from "@/api/books";
 import { createLoan, getUserLoans, returnLoan } from "@/api/loans";
-import { LoadingState } from "@/components/LoadingState";
-import { StatusMessage } from "@/components/StatusMessage";
+import { ListSurface } from "@/components/layout/ListSurface";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PaginationControls } from "@/components/layout/PaginationControls";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagination } from "@/hooks/usePagination";
+import { formatLoanDate, getLoanStatusLabel, isLoanOverdue } from "@/lib/loans";
+import { paginateArray } from "@/lib/pagination";
+import { invalidateLoanQueries } from "@/lib/queryKeys";
+import type { Book } from "@/types/book";
 import type { Loan } from "@/types/loan";
 
-function formatDate(value?: string): string {
-  if (!value) {
-    return "-";
-  }
-  return new Date(value).toLocaleDateString("fr-FR");
-}
+type LoanFilter = "all" | "active" | "overdue";
 
-function loanStatus(loan: Loan): string {
-  if (loan.statut === "en_retard") {
-    return "En retard";
+function matchesFilter(loan: Loan, filter: LoanFilter): boolean {
+  if (filter === "all") {
+    return true;
   }
-  if (loan.statut === "retourne" || loan.date_retour) {
-    return "Retourne";
+  if (filter === "overdue") {
+    return isLoanOverdue(loan);
   }
-  return "Actif";
+  return loan.statut !== "retourne" && !loan.date_retour;
 }
 
 export function LoansPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [bookId, setBookId] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [bookId, setBookId] = useState(searchParams.get("bookId") ?? "");
+  const [loanFilter, setLoanFilter] = useState<LoanFilter>("all");
+  const { page, pageSize, setPage } = usePagination({ resetKey: loanFilter });
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("bookId");
+    if (fromQuery) {
+      setBookId(fromQuery);
+    }
+  }, [searchParams]);
 
   const booksQuery = useQuery({
-    queryKey: ["books"],
-    queryFn: listBooks,
+    queryKey: ["books", "loan-picker"],
+    queryFn: () => listBooks({ page: 1, pageSize: 200 }),
   });
 
   const loansQuery = useQuery({
     queryKey: ["loans", user?.id],
-    queryFn: () => getUserLoans(user!.id),
+    queryFn: () => getUserLoans(user!.id, { page: 1, pageSize: 200 }),
     enabled: Boolean(user),
   });
+
+  const bookMap = useMemo(() => {
+    const map = new Map<number, Book>();
+    for (const book of booksQuery.data?.items ?? []) {
+      map.set(book.id, book);
+    }
+    return map;
+  }, [booksQuery.data?.items]);
+
+  const filteredLoans = useMemo(() => {
+    const loans = loansQuery.data?.items ?? [];
+    return loans.filter((loan) => matchesFilter(loan, loanFilter));
+  }, [loansQuery.data?.items, loanFilter]);
+
+  const paginatedLoans = useMemo(
+    () => paginateArray(filteredLoans, page, pageSize),
+    [filteredLoans, page, pageSize],
+  );
 
   const borrowMutation = useMutation({
     mutationFn: () =>
@@ -49,111 +98,155 @@ export function LoansPage() {
         book_id: Number(bookId),
       }),
     onSuccess: async () => {
-      setMessage("Emprunt enregistre.");
-      setError(null);
+      toast.success("Emprunt enregistre.");
       setBookId("");
-      await queryClient.invalidateQueries({ queryKey: ["loans", user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["recommendations", user?.id] });
+      await invalidateLoanQueries(queryClient, user?.id);
     },
-    onError: (err: Error) => {
-      setError(err.message);
-      setMessage(null);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const returnMutation = useMutation({
     mutationFn: (bookIdToReturn: number) => returnLoan(user!.id, bookIdToReturn),
     onSuccess: async () => {
-      setMessage("Retour enregistre.");
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: ["loans", user?.id] });
+      toast.success("Retour enregistre.");
+      await invalidateLoanQueries(queryClient, user?.id);
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   function handleBorrow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!bookId) {
-      setError("Selectionnez un livre.");
+      toast.error("Selectionnez un livre.");
       return;
     }
     borrowMutation.mutate();
   }
 
+  const bookOptions = booksQuery.data?.items ?? [];
+
+  function getBookTitle(loan: Loan): string {
+    return bookMap.get(loan.book_id)?.titre ?? `#${loan.book_id}`;
+  }
+
   return (
-    <div className="page-grid">
-      <section className="card">
-        <h2>Emprunter un livre</h2>
-        <form className="stack" onSubmit={handleBorrow}>
-          <label className="field">
-            <span>Livre</span>
-            <select value={bookId} onChange={(event) => setBookId(event.target.value)} required>
-              <option value="">Choisir un livre</option>
-              {booksQuery.data?.map((book) => (
-                <option key={book.id} value={book.id}>
-                  #{book.id} - {book.titre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="button button-primary" disabled={borrowMutation.isPending}>
-            Emprunter
-          </button>
-        </form>
-        {message ? <StatusMessage tone="success" message={message} /> : null}
-        {error ? <StatusMessage tone="error" message={error} /> : null}
-      </section>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Espace personnel"
+        title="Emprunts"
+        description="Empruntez un ouvrage et consultez votre historique."
+      />
 
-      <section className="card">
-        <h2>Historique des emprunts</h2>
-        {loansQuery.isLoading ? <LoadingState /> : null}
-        {loansQuery.isError ? (
-          <StatusMessage tone="error" message="Historique indisponible pour le moment." />
-        ) : null}
+      <Card className="border-border/80">
+        <CardHeader>
+          <CardTitle>Emprunter un livre</CardTitle>
+          <CardDescription>Selectionnez un ouvrage du catalogue pour lancer l&apos;emprunt.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-4 md:flex-row md:items-end" onSubmit={handleBorrow}>
+            <div className="flex w-full flex-col gap-2 md:max-w-md">
+              <Select value={bookId} onValueChange={(value) => setBookId(value ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un livre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bookOptions.map((book) => (
+                    <SelectItem key={book.id} value={String(book.id)}>
+                      #{book.id} - {book.titre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={borrowMutation.isPending}>
+              Emprunter
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        {loansQuery.data && loansQuery.data.length === 0 ? (
-          <StatusMessage tone="info" message="Aucun emprunt enregistre." />
-        ) : null}
-
-        {loansQuery.data && loansQuery.data.length > 0 ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Livre</th>
-                  <th>Emprunt</th>
-                  <th>Retour</th>
-                  <th>Statut</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loansQuery.data.map((loan, index) => (
-                  <tr key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                    <td>#{loan.book_id}</td>
-                    <td>{formatDate(loan.date_emprunt)}</td>
-                    <td>{formatDate(loan.date_retour)}</td>
-                    <td>{loanStatus(loan)}</td>
-                    <td>
-                      {loan.statut !== "retourne" && !loan.date_retour ? (
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          onClick={() => returnMutation.mutate(loan.book_id)}
-                        >
-                          Retourner
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </section>
+      <Card className="border-border/80">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <CardTitle>Historique des emprunts</CardTitle>
+          <Select value={loanFilter} onValueChange={(value) => setLoanFilter((value ?? "all") as LoanFilter)}>
+            <SelectTrigger className="w-full md:w-56">
+              <SelectValue placeholder="Filtrer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les emprunts</SelectItem>
+              <SelectItem value="active">Emprunts actifs</SelectItem>
+              <SelectItem value="overdue">En retard</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          <ListSurface
+            footer={
+              loansQuery.data ? (
+                <PaginationControls
+                  page={paginatedLoans.page}
+                  pageSize={paginatedLoans.pageSize}
+                  total={paginatedLoans.total}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {loansQuery.isLoading ? <Skeleton className="h-32 w-full" /> : null}
+            {loansQuery.isError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Historique indisponible</AlertTitle>
+                <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
+              </Alert>
+            ) : null}
+            {loansQuery.data && paginatedLoans.items.length === 0 ? (
+              <Alert>
+                <AlertDescription>Aucun emprunt ne correspond au filtre selectionne.</AlertDescription>
+              </Alert>
+            ) : null}
+            {paginatedLoans.items.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Livre</TableHead>
+                    <TableHead>Emprunt</TableHead>
+                    <TableHead>Retour</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedLoans.items.map((loan, index) => (
+                    <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
+                      <TableCell>{getBookTitle(loan)}</TableCell>
+                      <TableCell>{formatLoanDate(loan.date_emprunt)}</TableCell>
+                      <TableCell>{formatLoanDate(loan.date_retour)}</TableCell>
+                      <TableCell>
+                        <Badge variant={isLoanOverdue(loan) ? "destructive" : "secondary"}>
+                          {getLoanStatusLabel(loan)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {loan.statut !== "retourne" && !loan.date_retour ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => returnMutation.mutate(loan.book_id)}
+                          >
+                            Retourner
+                          </Button>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
+          </ListSurface>
+        </CardContent>
+      </Card>
     </div>
   );
 }

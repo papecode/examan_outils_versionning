@@ -1,5 +1,7 @@
 # Bibliotheque numerique DIT
 
+[![CI](https://github.com/papecode/examan_outils_versionning/actions/workflows/ci.yml/badge.svg)](https://github.com/papecode/examan_outils_versionning/actions/workflows/ci.yml)
+
 Monorepo du projet d'examen Outils de Versioning (microservices, Docker, DVC, frontend React).
 
 ## Structure
@@ -23,6 +25,10 @@ cp .env.example .env
 cp frontend/.env.example frontend/.env
 ```
 
+### CORS (dev et production)
+
+Les microservices lisent `CORS_ORIGINS` depuis `.env` (voir [`.env.example`](.env.example)). En developpement, les origines `http://localhost:5173` et `http://localhost:3000` suffisent. Avant un deploiement, ajoutez l'URL publique du frontend (sans slash final) a la meme variable, puis redemarrez les services API.
+
 ## Frontend seul (dev local)
 
 ```bash
@@ -33,17 +39,53 @@ npm run dev
 
 ## Stack complete
 
-Profil developpement (hot-reload frontend) :
+Profil developpement (hot-reload frontend + APIs) :
 
 ```bash
 docker compose --profile dev up --build
 ```
+
+Comptes de demonstration (service utilisateurs) : `admin@dit.local`, `etudiant@dit.local`, `professeur@dit.local` avec le mot de passe `dit123` (`DEFAULT_PASSWORD` dans `.env`).
 
 Profil production (build statique nginx) :
 
 ```bash
 docker compose --profile prod up --build
 ```
+
+## CI/CD (GitHub Actions)
+
+Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) s'execute sur les branches `front` et `main` a chaque `push` et `pull_request`.
+
+| Job | Role |
+| --- | --- |
+| `frontend` | `npm ci`, `npm run lint`, `npm run build` dans `frontend/` |
+| `backend` | `pip install` et `python -m compileall` pour chaque microservice |
+| `ml-scripts` | `python -m compileall scripts` (pipeline ML, sans `dvc repro` en CI) |
+| `docker` | `docker compose --profile prod build` apres copie de `.env.example` vers `.env` |
+| `integration` | `docker compose --profile prod up -d`, controle de `GET /health`, smoke Playwright sur le frontend prod, puis `docker compose down -v` |
+| `pytest` | Tests API cibles sur les services `livres` et `emprunts` |
+
+Commandes locales equivalentes :
+
+```bash
+cd frontend && npm ci && npm run lint && npm run build
+python -m compileall services/utilisateurs/app services/livres/app services/emprunts/app services/reco/app scripts
+cp .env.example .env && docker compose --profile prod build
+```
+
+Suivi des executions : onglet **Actions** du depot GitHub.
+
+## Pipeline ML (DVC)
+
+```bash
+python -m pip install -r requirements-ml.txt
+curl http://localhost:8003/loans/export
+python -m dvc repro
+docker compose --profile dev up -d --build reco
+```
+
+Le fichier `data/loans.csv` peut provenir de l'export emprunts ou du jeu seed du depot. Les sorties `data/loans_clean.csv` et `models/model.pkl` sont gerees par DVC (`dvc.lock`). `metrics.json` resume l'evaluation locale.
 
 ## Publication Git (manuelle)
 

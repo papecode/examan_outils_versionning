@@ -1,22 +1,31 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
+import { login } from "@/api/auth";
 import { ApiError } from "@/api/http";
-import { checkUser, createUser } from "@/api/users";
-import { StatusMessage } from "@/components/StatusMessage";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-
-const roles = ["\u00c9tudiant", "Professeur", "Personnel"] as const;
+import { getSafeRedirect } from "@/lib/navigation";
 
 export function AuthPage() {
-  const { user, login } = useAuth();
+  const { user, login: saveSession } = useAuth();
+  const [searchParams] = useSearchParams();
   const [identifier, setIdentifier] = useState("");
-  const [role, setRole] = useState<(typeof roles)[number]>("\u00c9tudiant");
-  const [registerMode, setRegisterMode] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const next = getSafeRedirect(searchParams.get("next"), user);
+  const bookId = searchParams.get("bookId");
+  const redirectTarget =
+    bookId && next.startsWith("/espace/emprunts") ? `${next}?bookId=${bookId}` : next;
+
   if (user) {
-    return <Navigate to="/catalogue" replace />;
+    return <Navigate to={redirectTarget} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -25,25 +34,25 @@ export function AuthPage() {
     setLoading(true);
 
     try {
-      if (!registerMode) {
-        const existing = await checkUser(identifier.trim());
-        login(existing);
-        return;
-      }
-
-      const created = await createUser({
-        nom: identifier.trim(),
-        type_utilisateur: role,
+      const session = await login({
+        identifier: identifier.trim(),
+        password,
       });
-      login(created);
+      saveSession(session);
+      toast.success("Connexion reussie.");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404 && !registerMode) {
-        setRegisterMode(true);
-        setError("Utilisateur introuvable. Choisissez un profil pour creer le compte.");
+      if (err instanceof ApiError && err.status === 401) {
+        setError(
+          "Identifiants incorrects ou compte inexistant. Contactez le personnel de la bibliotheque.",
+        );
+      } else if (err instanceof ApiError && (err.status === 404 || err.status === 503)) {
+        setError(
+          "Le service d'authentification n'est pas disponible. Reessayez plus tard ou contactez le personnel de la bibliotheque.",
+        );
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Connexion impossible. Verifiez que le service utilisateurs est demarre.");
+        setError("Connexion impossible pour le moment.");
       }
     } finally {
       setLoading(false);
@@ -51,45 +60,53 @@ export function AuthPage() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="card auth-card" onSubmit={handleSubmit}>
-        <p className="eyebrow">Acces bibliotheque</p>
-        <h1>Connexion</h1>
-        <p className="muted">
-          {registerMode
-            ? "Nouvel utilisateur : confirmez le profil puis validez."
-            : "Entrez votre nom ou votre identifiant numerique."}
+    <AuthLayout
+      mode="signIn"
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Mot de passe oublie ?{" "}
+          <Link to="/mot-de-passe-oublie" className="text-primary underline-offset-4 hover:underline">
+            Reinitialiser par email
+          </Link>
         </p>
-
-        <label className="field">
-          <span>Nom ou ID</span>
-          <input
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="identifier">Email ou identifiant</Label>
+          <Input
+            id="identifier"
+            name="identifier"
+            autoComplete="username"
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            placeholder="Ex. 1 ou Marie Diop"
+            placeholder="Ex. marie.diop@dit.sn ou 42"
             required
           />
-        </label>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">Mot de passe</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </div>
 
-        {registerMode ? (
-          <label className="field">
-            <span>Profil</span>
-            <select value={role} onChange={(event) => setRole(event.target.value as (typeof roles)[number])}>
-              {roles.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : null}
 
-        {error ? <StatusMessage tone="error" message={error} /> : null}
-
-        <button type="submit" className="button button-primary" disabled={loading}>
-          {loading ? "Verification..." : registerMode ? "Creer le compte" : "Acceder a l'espace"}
-        </button>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Connexion..." : "Se connecter"}
+        </Button>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

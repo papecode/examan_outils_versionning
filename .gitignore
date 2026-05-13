@@ -16,6 +16,7 @@ venv/
 .dvc/tmp/
 postgres_data/
 
+data/loans_clean.csv
 models/*.pkl
 !models/.gitkeep
 
@@ -29,3 +30,4 @@ Thumbs.db
 CLAUDE.md
 tasks/lessons.md
 tasks/todo.md  
+/metrics.json

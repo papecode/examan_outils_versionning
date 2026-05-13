@@ -4,6 +4,7 @@ export interface Loan {
   user_id: number;
   book_id: number;
   date_emprunt?: string;
+  date_echeance?: string;
   date_retour?: string;
   statut?: LoanStatus;
 }
