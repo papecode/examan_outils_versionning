@@ -1,31 +1,21 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { login } from "@/api/auth";
 import { ApiError } from "@/api/http";
-import { checkUser, createUser } from "@/api/users";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { getSafeRedirect } from "@/lib/navigation";
 
-const roles = ["\u00c9tudiant", "Professeur", "Personnel"] as const;
-
 export function AuthPage() {
-  const { user, login } = useAuth();
+  const { user, login: saveSession } = useAuth();
   const [searchParams] = useSearchParams();
   const [identifier, setIdentifier] = useState("");
-  const [role, setRole] = useState<(typeof roles)[number]>("\u00c9tudiant");
-  const [registerMode, setRegisterMode] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,27 +34,25 @@ export function AuthPage() {
     setLoading(true);
 
     try {
-      if (!registerMode) {
-        const existing = await checkUser(identifier.trim());
-        login(existing);
-        toast.success("Connexion reussie.");
-        return;
-      }
-
-      const created = await createUser({
-        nom: identifier.trim(),
-        type_utilisateur: role,
+      const session = await login({
+        identifier: identifier.trim(),
+        password,
       });
-      login(created);
-      toast.success("Compte cree avec succes.");
+      saveSession(session);
+      toast.success("Connexion reussie.");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404 && !registerMode) {
-        setRegisterMode(true);
-        setError("Utilisateur introuvable. Choisissez un profil pour creer le compte.");
+      if (err instanceof ApiError && err.status === 401) {
+        setError(
+          "Identifiants incorrects ou compte inexistant. Contactez le personnel de la bibliotheque.",
+        );
+      } else if (err instanceof ApiError && (err.status === 404 || err.status === 503)) {
+        setError(
+          "Le service d'authentification n'est pas disponible. Reessayez plus tard ou contactez le personnel de la bibliotheque.",
+        );
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Connexion impossible. Verifiez que le service utilisateurs est demarre.");
+        setError("Connexion impossible pour le moment.");
       }
     } finally {
       setLoading(false);
@@ -72,59 +60,54 @@ export function AuthPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl justify-center px-4 py-16 md:px-6">
-      <Card className="w-full max-w-lg border-primary/20 bg-card/90">
-        <CardHeader>
-          <CardTitle className="font-heading text-3xl">Connexion</CardTitle>
-          <CardDescription>
-            {registerMode
-              ? "Nouvel utilisateur : confirmez le profil puis validez."
-              : "Entrez votre nom ou votre identifiant numerique pour acceder a l'espace emprunt."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="identifier">Nom ou ID</Label>
-              <Input
-                id="identifier"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
-                placeholder="Ex. 1 ou Marie Diop"
-                required
-              />
-            </div>
+    <AuthLayout
+      title="Connexion a l'espace emprunt"
+      description="Utilisez votre email institutionnel ou votre identifiant numerique. Les comptes sont crees par le personnel de la bibliotheque."
+      footer={
+        <p className="text-sm text-muted-foreground">
+          Mot de passe oublie ?{" "}
+          <Link to="/mot-de-passe-oublie" className="text-primary underline-offset-4 hover:underline">
+            Reinitialiser par email
+          </Link>
+        </p>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="identifier">Email ou identifiant</Label>
+          <Input
+            id="identifier"
+            name="identifier"
+            autoComplete="username"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            placeholder="Ex. marie.diop@dit.sn ou 42"
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">Mot de passe</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </div>
 
-            {registerMode ? (
-              <div className="flex flex-col gap-2">
-                <Label>Profil</Label>
-                <Select value={role} onValueChange={(value) => setRole(value as (typeof roles)[number])}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un profil" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Button type="submit" disabled={loading}>
-              {loading ? "Verification..." : registerMode ? "Creer le compte" : "Acceder a l'espace"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        <Button type="submit" disabled={loading}>
+          {loading ? "Connexion..." : "Se connecter"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

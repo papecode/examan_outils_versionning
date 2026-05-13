@@ -5,10 +5,13 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthPage } from "@/pages/AuthPage";
 import { CatalogPage } from "@/pages/CatalogPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoansPage } from "@/pages/LoansPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { RecommendationsPage } from "@/pages/RecommendationsPage";
+import { StaffAccountsPage } from "@/pages/StaffAccountsPage";
+import { StaffRoute } from "@/routes/StaffRoute";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -29,6 +32,7 @@ export function AppRouter() {
         <Route index element={<LandingPage />} />
         <Route path="catalogue" element={<CatalogPage />} />
         <Route path="connexion" element={<AuthPage />} />
+        <Route path="mot-de-passe-oublie" element={<ForgotPasswordPage />} />
       </Route>
 
       <Route
@@ -42,6 +46,14 @@ export function AppRouter() {
         <Route path="emprunts" element={<LoansPage />} />
         <Route path="recommandations" element={<RecommendationsPage />} />
         <Route path="profil" element={<ProfilePage />} />
+        <Route
+          path="personnel/comptes"
+          element={
+            <StaffRoute>
+              <StaffAccountsPage />
+            </StaffRoute>
+          }
+        />
       </Route>
 
       <Route path="/emprunts" element={<Navigate to="/espace/emprunts" replace />} />

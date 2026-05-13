@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getUserById } from "@/api/users";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,12 +19,9 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Espace personnel</p>
-        <h1 className="font-heading text-4xl font-semibold">Profil</h1>
-      </div>
+      <PageHeader eyebrow="Espace personnel" title="Profil" />
 
-      <Card>
+      <Card className="border-border/80">
         <CardHeader>
           <CardTitle>Informations utilisateur</CardTitle>
         </CardHeader>
@@ -46,7 +44,7 @@ export function ProfilePage() {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Email</dt>
-                <dd className="text-lg font-medium">{profile.email}</dd>
+                <dd className="text-lg font-medium">{profile.email || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Profil</dt>

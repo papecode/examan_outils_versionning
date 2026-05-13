@@ -11,16 +11,32 @@ Source de verite du monorepo `examen_versionning`. Les URLs par defaut supposent
 | `VITE_API_LOANS_URL` | Service emprunts | `http://localhost:8003` |
 | `VITE_API_RECO_URL` | Service recommandation | `http://localhost:8004` |
 
+## Authentification
+
+| Methode | Route | Corps | Reponse / erreurs |
+| --- | --- | --- | --- |
+| `POST` | `/auth/login` | `{ identifier, password }` | `User` (+ `token?` futur) ; `401` identifiants invalides |
+| `POST` | `/auth/forgot-password` | `{ email }` | `200` message generique (ne pas reveler si l'email existe) |
+
+`identifier` accepte un **email institutionnel** ou un **ID numerique**. Le mot de passe n'est jamais stocke en clair cote frontend.
+
+`GET /users/check/{identifier}` n'est **pas** le mode de connexion final ; reserve a la migration backend si besoin.
+
 ## Utilisateurs
 
 | Methode | Route | Usage UI |
 | --- | --- | --- |
-| `POST` | `/users` | Inscription |
-| `GET` | `/users/check/{identifier}` | Connexion par nom ou ID |
-| `GET` | `/users` | Administration / listing |
+| `POST` | `/users` | Creation de compte **Personnel uniquement** (espace admin) |
+| `GET` | `/users` | Administration / listing comptes |
 | `GET` | `/users/{user_id}` | Page profil |
 
 Modele `User` : `id`, `nom`, `email`, `type_utilisateur` (`Etudiant`, `Professeur`, `Personnel`).
+
+### Pagination `GET /users`
+
+Query params : `page` (defaut `1`), `pageSize` (defaut `12`).
+
+Reponse ideale : `{ items: User[], total, page, pageSize }`. Si le backend renvoie un tableau simple, le frontend pagine en client.
 
 ## Livres
 
@@ -34,6 +50,12 @@ Modele `User` : `id`, `nom`, `email`, `type_utilisateur` (`Etudiant`, `Professeu
 
 Modele `Book` : `id`, `titre`, `auteur`, `categorie`, `isbn?`.
 
+### Pagination `GET /books` et `GET /search`
+
+Query params : `page`, `pageSize` (defaut `12`), `q` pour la recherche.
+
+Reponse ideale : `{ items: Book[], total, page, pageSize }`. Tableau simple accepte : pagination client cote frontend.
+
 ## Emprunts
 
 | Methode | Route | Usage UI |
@@ -46,6 +68,10 @@ Modele `Book` : `id`, `titre`, `auteur`, `categorie`, `isbn?`.
 
 Modele `Loan` : `user_id`, `book_id`, `date_emprunt?`, `date_retour?`, `statut?` (`actif`, `retourne`, `en_retard`).
 
+### Pagination `GET /loans/user/{user_id}`
+
+Query params : `page`, `pageSize` (defaut `12`). Meme forme de reponse paginee que ci-dessus.
+
 ## Recommandation
 
 | Methode | Route | Usage UI |
@@ -55,8 +81,23 @@ Modele `Loan` : `user_id`, `book_id`, `date_emprunt?`, `date_retour?`, `statut?`
 
 Reponse : liste de `Book`. Erreur `404` si le modele n'est pas disponible.
 
+## Erreurs HTTP communes
+
+| Code | Usage |
+| --- | --- |
+| `400` | Corps invalide |
+| `401` | Authentification requise ou identifiants invalides |
+| `403` | Action reservee (ex. creation de compte hors Personnel) |
+| `404` | Ressource introuvable |
+| `422` | Validation FastAPI (`detail` string ou tableau) |
+| `503` | Service indisponible |
+
+Le frontend mappe `detail` (string ou premier `msg` d'un tableau) vers un message utilisateur lisible.
+
 ## Ecarts a implementer cote backend
 
+- Endpoints `/auth/login` et `/auth/forgot-password`.
 - Persistance PostgreSQL des emprunts et calcul des retards.
+- Reponses paginees optionnelles sur les listes.
 - Recherche ISBN si le champ est ajoute au schema livres.
 - CORS explicite sur chaque service pour l'origine du frontend en production.

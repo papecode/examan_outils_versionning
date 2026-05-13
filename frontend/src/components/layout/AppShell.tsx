@@ -1,12 +1,16 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteNavbar } from "@/components/layout/SiteNavbar";
+import { useAuth } from "@/hooks/useAuth";
+import { isStaff } from "@/lib/roles";
 
 const tabs = [
   { to: "/espace/emprunts", label: "Emprunts" },
   { to: "/espace/recommandations", label: "Recommandations" },
   { to: "/espace/profil", label: "Profil" },
 ];
+
+const staffTab = { to: "/espace/personnel/comptes", label: "Comptes" };
 
 function tabClassName({ isActive }: { isActive: boolean }) {
   return isActive
@@ -15,12 +19,15 @@ function tabClassName({ isActive }: { isActive: boolean }) {
 }
 
 export function AppShell() {
+  const { user } = useAuth();
+  const visibleTabs = isStaff(user) ? [...tabs, staffTab] : tabs;
+
   return (
     <div className="flex min-h-screen flex-col">
       <SiteNavbar />
-      <div className="border-b border-border/70 bg-secondary/30">
+      <div className="border-b border-border/70 bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 py-3 md:px-6">
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <NavLink key={tab.to} to={tab.to} className={tabClassName}>
               {tab.label}
             </NavLink>

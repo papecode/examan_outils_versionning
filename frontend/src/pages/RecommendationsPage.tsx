@@ -1,12 +1,19 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRecommendations } from "@/api/recommendations";
+import { ListSurface } from "@/components/layout/ListSurface";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PaginationControls } from "@/components/layout/PaginationControls";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagination } from "@/hooks/usePagination";
+import { paginateArray } from "@/lib/pagination";
 
 export function RecommendationsPage() {
   const { user } = useAuth();
+  const { page, pageSize, setPage } = usePagination();
 
   const recommendationsQuery = useQuery({
     queryKey: ["recommendations", user?.id],
@@ -14,15 +21,20 @@ export function RecommendationsPage() {
     enabled: Boolean(user),
   });
 
+  const paginated = useMemo(() => {
+    if (!recommendationsQuery.data) {
+      return null;
+    }
+    return paginateArray(recommendationsQuery.data, page, pageSize);
+  }, [recommendationsQuery.data, page, pageSize]);
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Espace personnel</p>
-        <h1 className="font-heading text-4xl font-semibold">Recommandations</h1>
-        <p className="mt-2 text-muted-foreground">
-          Suggestions personnalisees basees sur l&apos;historique d&apos;emprunts et le modele ML.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Espace personnel"
+        title="Recommandations"
+        description="Suggestions personnalisees basees sur l'historique d'emprunts et le modele ML."
+      />
 
       {recommendationsQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -40,26 +52,37 @@ export function RecommendationsPage() {
         </Alert>
       ) : null}
 
-      {recommendationsQuery.data && recommendationsQuery.data.length === 0 ? (
+      {paginated && paginated.items.length === 0 ? (
         <Alert>
           <AlertDescription>Aucune recommandation pour le moment.</AlertDescription>
         </Alert>
       ) : null}
 
-      {recommendationsQuery.data && recommendationsQuery.data.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {recommendationsQuery.data.map((book) => (
-            <Card key={book.id}>
-              <CardHeader>
-                <CardTitle>{book.titre}</CardTitle>
-                <CardDescription>{book.auteur}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{book.categorie || "Sans categorie"}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {paginated && paginated.items.length > 0 ? (
+        <ListSurface
+          footer={
+            <PaginationControls
+              page={paginated.page}
+              pageSize={paginated.pageSize}
+              total={paginated.total}
+              onPageChange={setPage}
+            />
+          }
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            {paginated.items.map((book) => (
+              <Card key={book.id} className="border-border/80">
+                <CardHeader>
+                  <CardTitle>{book.titre}</CardTitle>
+                  <CardDescription>{book.auteur}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{book.categorie || "Sans categorie"}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ListSurface>
       ) : null}
     </div>
   );

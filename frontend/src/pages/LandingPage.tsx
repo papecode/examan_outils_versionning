@@ -28,16 +28,16 @@ export function LandingPage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden border-b border-border/70 bg-[radial-gradient(circle_at_top_left,oklch(0.94_0.04_85),transparent_45%),radial-gradient(circle_at_bottom_right,oklch(0.92_0.05_150),transparent_40%)]">
+      <section className="border-b border-border/70 bg-background">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 md:grid-cols-[1.2fr_0.8fr] md:px-6 md:py-24">
           <div className="flex flex-col gap-6">
             <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Dakar Institute of Technology</p>
-            <h1 className="font-heading text-4xl font-semibold leading-tight md:text-6xl">
-              La bibliotheque academique, pensee comme une vitrine vivante.
+            <h1 className="font-heading text-4xl font-semibold leading-tight md:text-5xl">
+              La bibliotheque academique, claire et accessible.
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground">
               Consultez le catalogue, empruntez vos references et decouvrez des recommandations
-              personnalisees dans une experience claire et responsive.
+              personnalisees dans une interface epuree.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/catalogue" className={cn(buttonVariants({ size: "lg" }))}>
@@ -49,14 +49,14 @@ export function LandingPage() {
               </Button>
             </div>
           </div>
-          <Card className="self-end border-primary/20 bg-card/80 shadow-xl">
+          <Card className="self-end border-border/80 bg-card">
             <CardHeader>
               <CardTitle>Comment emprunter</CardTitle>
               <CardDescription>Trois etapes pour acceder a un ouvrage.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
               <p>1. Parcourez le catalogue public et choisissez un livre.</p>
-              <p>2. Connectez-vous avec votre nom ou identifiant DIT.</p>
+              <p>2. Connectez-vous avec votre email institutionnel ou identifiant DIT.</p>
               <p>3. Finalisez l&apos;emprunt et suivez votre historique dans l&apos;espace personnel.</p>
             </CardContent>
           </Card>
@@ -70,7 +70,7 @@ export function LandingPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {highlights.map((item) => (
-            <Card key={item.title} className="bg-card/90">
+            <Card key={item.title} className="border-border/80 bg-card">
               <CardHeader>
                 <item.icon className="text-primary" />
                 <CardTitle>{item.title}</CardTitle>
@@ -81,7 +81,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-border/70 bg-secondary/30">
+      <section className="border-y border-border/70 bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-16 md:px-6">
           <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>

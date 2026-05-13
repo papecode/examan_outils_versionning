@@ -6,25 +6,26 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { User } from "@/types/user";
+import type { AuthSession, User } from "@/types/user";
 
-const STORAGE_KEY = "dit-library-user";
+const STORAGE_KEY = "dit-library-session";
 
 interface AuthContextValue {
   user: User | null;
-  login: (user: User) => void;
+  token: string | null;
+  login: (session: AuthSession) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readStoredUser(): User | null {
+function readStoredSession(): AuthSession | null {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) {
     return null;
   }
   try {
-    return JSON.parse(raw) as User;
+    return JSON.parse(raw) as AuthSession;
   } catch {
     sessionStorage.removeItem(STORAGE_KEY);
     return null;
@@ -32,25 +33,26 @@ function readStoredUser(): User | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => readStoredUser());
+  const [session, setSession] = useState<AuthSession | null>(() => readStoredSession());
 
-  const login = useCallback((nextUser: User) => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-    setUser(nextUser);
+  const login = useCallback((nextSession: AuthSession) => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
+    setSession(nextSession);
   }, []);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
-    setUser(null);
+    setSession(null);
   }, []);
 
   const value = useMemo(
     () => ({
-      user,
+      user: session?.user ?? null,
+      token: session?.token ?? null,
       login,
       logout,
     }),
-    [user, login, logout],
+    [session, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

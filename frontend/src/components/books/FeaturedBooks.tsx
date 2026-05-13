@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export function FeaturedBooks() {
   const booksQuery = useQuery({
     queryKey: ["books", "featured"],
-    queryFn: listBooks,
+    queryFn: () => listBooks({ page: 1, pageSize: 6 }),
   });
 
   if (booksQuery.isLoading) {
@@ -34,7 +34,7 @@ export function FeaturedBooks() {
     );
   }
 
-  const books = (booksQuery.data ?? []).slice(0, 6);
+  const books = booksQuery.data?.items ?? [];
 
   if (books.length === 0) {
     return (
@@ -48,7 +48,7 @@ export function FeaturedBooks() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {books.map((book) => (
-        <Card key={book.id} className="border-border/80 bg-card/90">
+        <Card key={book.id} className="border-border/80 bg-card/95">
           <CardHeader>
             <CardTitle className="text-xl">{book.titre}</CardTitle>
             <CardDescription>{book.auteur}</CardDescription>

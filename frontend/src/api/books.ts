@@ -1,16 +1,33 @@
+import { buildPaginationQuery, toPaginatedResponse } from "@/lib/pagination";
 import { apiConfig } from "@/lib/env";
 import type { Book, BookInput } from "@/types/book";
+import type { PaginatedResponse, PaginationParams } from "@/types/pagination";
 import { requestJson } from "./http";
 
 const base = apiConfig.books;
 
-export function listBooks(): Promise<Book[]> {
-  return requestJson<Book[]>(`${base}/books`);
+export async function listBooks(params: PaginationParams = {}): Promise<PaginatedResponse<Book>> {
+  const response = await requestJson<Book[] | PaginatedResponse<Book>>(
+    `${base}/books${buildPaginationQuery(params)}`,
+  );
+  return toPaginatedResponse(response, params);
 }
 
-export function searchBooks(query: string): Promise<Book[]> {
-  const params = new URLSearchParams({ q: query });
-  return requestJson<Book[]>(`${base}/search?${params.toString()}`);
+export async function searchBooks(
+  query: string,
+  params: PaginationParams = {},
+): Promise<PaginatedResponse<Book>> {
+  const search = new URLSearchParams({ q: query });
+  if (params.page) {
+    search.set("page", String(params.page));
+  }
+  if (params.pageSize) {
+    search.set("pageSize", String(params.pageSize));
+  }
+  const response = await requestJson<Book[] | PaginatedResponse<Book>>(
+    `${base}/search?${search.toString()}`,
+  );
+  return toPaginatedResponse(response, params);
 }
 
 export function createBook(payload: BookInput): Promise<Book> {

@@ -9,6 +9,12 @@ export interface User {
 
 export interface UserInput {
   nom: string;
-  type_utilisateur: string;
+  type_utilisateur: UserRole;
   email?: string;
+  password?: string;
+}
+
+export interface AuthSession {
+  user: User;
+  token?: string;
 }

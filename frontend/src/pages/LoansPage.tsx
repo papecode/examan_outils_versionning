@@ -4,6 +4,9 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { listBooks } from "@/api/books";
 import { createLoan, getUserLoans, returnLoan } from "@/api/loans";
+import { ListSurface } from "@/components/layout/ListSurface";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PaginationControls } from "@/components/layout/PaginationControls";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagination } from "@/hooks/usePagination";
 import type { Loan } from "@/types/loan";
 
 function formatDate(value?: string): string {
@@ -49,6 +53,7 @@ export function LoansPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [bookId, setBookId] = useState(searchParams.get("bookId") ?? "");
+  const { page, pageSize, setPage } = usePagination();
 
   useEffect(() => {
     const fromQuery = searchParams.get("bookId");
@@ -58,13 +63,13 @@ export function LoansPage() {
   }, [searchParams]);
 
   const booksQuery = useQuery({
-    queryKey: ["books"],
-    queryFn: listBooks,
+    queryKey: ["books", "loan-picker"],
+    queryFn: () => listBooks({ page: 1, pageSize: 200 }),
   });
 
   const loansQuery = useQuery({
-    queryKey: ["loans", user?.id],
-    queryFn: () => getUserLoans(user!.id),
+    queryKey: ["loans", user?.id, page, pageSize],
+    queryFn: () => getUserLoans(user!.id, { page, pageSize }),
     enabled: Boolean(user),
   });
 
@@ -101,14 +106,18 @@ export function LoansPage() {
     borrowMutation.mutate();
   }
 
+  const loans = loansQuery.data?.items ?? [];
+  const bookOptions = booksQuery.data?.items ?? [];
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Espace personnel</p>
-        <h1 className="font-heading text-4xl font-semibold">Emprunts</h1>
-      </div>
+      <PageHeader
+        eyebrow="Espace personnel"
+        title="Emprunts"
+        description="Empruntez un ouvrage et consultez votre historique."
+      />
 
-      <Card>
+      <Card className="border-border/80">
         <CardHeader>
           <CardTitle>Emprunter un livre</CardTitle>
           <CardDescription>Selectionnez un ouvrage du catalogue pour lancer l&apos;emprunt.</CardDescription>
@@ -121,7 +130,7 @@ export function LoansPage() {
                   <SelectValue placeholder="Choisir un livre" />
                 </SelectTrigger>
                 <SelectContent>
-                  {booksQuery.data?.map((book) => (
+                  {bookOptions.map((book) => (
                     <SelectItem key={book.id} value={String(book.id)}>
                       #{book.id} - {book.titre}
                     </SelectItem>
@@ -136,61 +145,74 @@ export function LoansPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/80">
         <CardHeader>
           <CardTitle>Historique des emprunts</CardTitle>
         </CardHeader>
         <CardContent>
-          {loansQuery.isLoading ? <Skeleton className="h-32 w-full" /> : null}
-          {loansQuery.isError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Historique indisponible</AlertTitle>
-              <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
-            </Alert>
-          ) : null}
-          {loansQuery.data && loansQuery.data.length === 0 ? (
-            <Alert>
-              <AlertDescription>Aucun emprunt enregistre.</AlertDescription>
-            </Alert>
-          ) : null}
-          {loansQuery.data && loansQuery.data.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Livre</TableHead>
-                  <TableHead>Emprunt</TableHead>
-                  <TableHead>Retour</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loansQuery.data.map((loan, index) => (
-                  <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
-                    <TableCell>#{loan.book_id}</TableCell>
-                    <TableCell>{formatDate(loan.date_emprunt)}</TableCell>
-                    <TableCell>{formatDate(loan.date_retour)}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{loanStatus(loan)}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {loan.statut !== "retourne" && !loan.date_retour ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => returnMutation.mutate(loan.book_id)}
-                        >
-                          Retourner
-                        </Button>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
+          <ListSurface
+            footer={
+              loansQuery.data ? (
+                <PaginationControls
+                  page={loansQuery.data.page}
+                  pageSize={loansQuery.data.pageSize}
+                  total={loansQuery.data.total}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            {loansQuery.isLoading ? <Skeleton className="h-32 w-full" /> : null}
+            {loansQuery.isError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Historique indisponible</AlertTitle>
+                <AlertDescription>Le service emprunts n&apos;est pas joignable pour le moment.</AlertDescription>
+              </Alert>
+            ) : null}
+            {loansQuery.data && loans.length === 0 ? (
+              <Alert>
+                <AlertDescription>Aucun emprunt enregistre.</AlertDescription>
+              </Alert>
+            ) : null}
+            {loans.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Livre</TableHead>
+                    <TableHead>Emprunt</TableHead>
+                    <TableHead>Retour</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : null}
+                </TableHeader>
+                <TableBody>
+                  {loans.map((loan, index) => (
+                    <TableRow key={`${loan.book_id}-${loan.date_emprunt ?? index}`}>
+                      <TableCell>#{loan.book_id}</TableCell>
+                      <TableCell>{formatDate(loan.date_emprunt)}</TableCell>
+                      <TableCell>{formatDate(loan.date_retour)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{loanStatus(loan)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {loan.statut !== "retourne" && !loan.date_retour ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => returnMutation.mutate(loan.book_id)}
+                          >
+                            Retourner
+                          </Button>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
+          </ListSurface>
         </CardContent>
       </Card>
     </div>
